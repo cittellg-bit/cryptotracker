@@ -1,0 +1,53 @@
+[build]
+  # The directory to publish (contains the built web assets)
+  publish = "build/web"
+  
+  # Build command to create web assets
+  command = """
+    # Install Flutter SDK
+    git clone https://github.com/flutter/flutter.git -b stable --depth 1 flutter_sdk
+    export PATH="$PATH:$PWD/flutter_sdk/bin"
+    
+    # Verify Flutter installation
+    flutter --version
+    flutter doctor
+    
+    # Get dependencies and build web assets
+    flutter pub get
+    flutter build web --release --web-renderer html
+  """
+
+[build.environment]
+  # Set Flutter specific environment variables
+  FLUTTER_ROOT = "$PWD/flutter_sdk"
+  PUB_CACHE = "$PWD/.pub-cache"
+
+# Handle client-side routing for Flutter web app (SPA redirects)
+[[redirects]]
+  from = "/*"
+  to = "/index.html"
+  status = 200
+
+# Security headers for Flutter web app
+[[headers]]
+  for = "/*"
+  [headers.values]
+    X-Frame-Options = "DENY"
+    X-Content-Type-Options = "nosniff"
+    Referrer-Policy = "strict-origin-when-cross-origin"
+
+# Cache static assets
+[[headers]]
+  for = "/assets/*"
+  [headers.values]
+    Cache-Control = "public, max-age=31536000, immutable"
+
+[[headers]]
+  for = "/*.js"
+  [headers.values]
+    Cache-Control = "public, max-age=31536000, immutable"
+
+[[headers]]
+  for = "/*.css"
+  [headers.values]
+    Cache-Control = "public, max-age=31536000, immutable"
