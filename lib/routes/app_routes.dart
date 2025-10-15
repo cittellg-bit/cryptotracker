@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 
 import '../presentation/add_transaction/add_transaction_screen.dart';
@@ -8,11 +9,13 @@ import '../presentation/crypto_selector/crypto_selector_screen.dart';
 import '../presentation/cryptocurrency_detail/cryptocurrency_detail.dart';
 import '../presentation/edit_transaction/edit_transaction.dart';
 import '../presentation/markets/markets_screen.dart';
+import '../presentation/portfolio_dashboard/portfolio_dashboard.dart';
 import '../presentation/settings/settings.dart';
 
 class AppRoutes {
+  // NAVIGATION FIX: Update route constants with proper navigation logging
   static const String initial = '/';
-  static const String portfolioDashboard = '/';
+  static const String portfolioDashboard = '/portfolio-dashboard';
   static const String addTransaction = '/add-transaction';
   static const String markets = '/markets';
   static const String settings = '/settings';
@@ -25,15 +28,67 @@ class AppRoutes {
 
   static Map<String, WidgetBuilder> get routes {
     return {
-      addTransaction: (context) => const AddTransactionScreen(),
-      markets: (context) => const MarketsScreen(),
-      settings: (context) => const Settings(),
-      cryptoSelector: (context) => const CryptoSelectorScreen(),
-      editTransaction: (context) => const EditTransaction(),
-      cryptocurrencyDetail: (context) => const CryptocurrencyDetail(),
-      anonymousAuth: (context) => const AnonymousAuthScreen(),
-      signUp: (context) => const SignUpScreen(),
-      signIn: (context) => const SignInScreen(),
+      // NAVIGATION FIX: Add navigation logging to all routes
+      portfolioDashboard: (context) {
+        if (kDebugMode) {
+          print('🧭 ROUTE: Building PortfolioDashboard');
+        }
+        return const PortfolioDashboard();
+      },
+      addTransaction: (context) {
+        if (kDebugMode) {
+          print('🧭 ROUTE: Building AddTransactionScreen');
+        }
+        return const AddTransactionScreen();
+      },
+      markets: (context) {
+        if (kDebugMode) {
+          print('🧭 ROUTE: Building MarketsScreen');
+        }
+        return const MarketsScreen();
+      },
+      settings: (context) {
+        if (kDebugMode) {
+          print('🧭 ROUTE: Building Settings');
+        }
+        return const Settings();
+      },
+      cryptoSelector: (context) {
+        if (kDebugMode) {
+          print('🧭 ROUTE: Building CryptoSelectorScreen');
+        }
+        return const CryptoSelectorScreen();
+      },
+      editTransaction: (context) {
+        if (kDebugMode) {
+          print('🧭 ROUTE: Building EditTransaction');
+        }
+        return const EditTransaction();
+      },
+      cryptocurrencyDetail: (context) {
+        if (kDebugMode) {
+          print('🧭 ROUTE: Building CryptocurrencyDetail');
+        }
+        return const CryptocurrencyDetail();
+      },
+      anonymousAuth: (context) {
+        if (kDebugMode) {
+          print('🧭 ROUTE: Building AnonymousAuthScreen');
+        }
+        return const AnonymousAuthScreen();
+      },
+      signUp: (context) {
+        if (kDebugMode) {
+          print('🧭 ROUTE: Building SignUpScreen');
+        }
+        return const SignUpScreen();
+      },
+      signIn: (context) {
+        if (kDebugMode) {
+          print('🧭 ROUTE: Building SignInScreen');
+        }
+        return const SignInScreen();
+      },
     };
   }
 
@@ -45,6 +100,54 @@ class AppRoutes {
       signUp,
       signIn,
     };
-    return publicRoutes.contains(routeName);
+
+    final isPublic = publicRoutes.contains(routeName);
+
+    if (kDebugMode) {
+      print(
+          '🧭 ROUTE SECURITY: Route $routeName is ${isPublic ? 'PUBLIC' : 'PRIVATE'}');
+    }
+
+    return isPublic;
+  }
+
+  /// NAVIGATION FIX: Get tab index for bottom navigation
+  static int getTabIndexForRoute(String? routeName) {
+    switch (routeName) {
+      case portfolioDashboard:
+        return 0;
+      case addTransaction:
+        return 1; // Transactions tab
+      case markets:
+        return 2;
+      case settings:
+        return 3;
+      default:
+        if (kDebugMode) {
+          print(
+              '🧭 ROUTE WARNING: Unknown route $routeName, defaulting to Portfolio tab');
+        }
+        return 0; // Default to Portfolio
+    }
+  }
+
+  /// NAVIGATION FIX: Get route name for tab index
+  static String getRouteForTabIndex(int index) {
+    switch (index) {
+      case 0:
+        return portfolioDashboard;
+      case 1:
+        return addTransaction;
+      case 2:
+        return markets;
+      case 3:
+        return settings;
+      default:
+        if (kDebugMode) {
+          print(
+              '🧭 ROUTE WARNING: Invalid tab index $index, defaulting to Portfolio');
+        }
+        return portfolioDashboard;
+    }
   }
 }

@@ -1,10 +1,13 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:sizer/sizer.dart';
 
 import './core/services/mock_auth_service.dart';
 import './core/services/pl_persistence_service.dart';
 import './core/services/portfolio_service.dart';
+import './presentation/add_transaction/add_transaction_screen.dart';
+import './presentation/markets/markets_screen.dart';
 import './presentation/portfolio_dashboard/portfolio_dashboard.dart';
 import './presentation/settings/settings.dart';
 import './routes/app_routes.dart';
@@ -181,6 +184,11 @@ class MyApp extends StatelessWidget {
             );
           },
           onGenerateRoute: (settings) {
+            // NAVIGATION FIX: Add logging for navigation events
+            if (kDebugMode) {
+              print('🧭 NAVIGATION EVENT: Navigating to ${settings.name}');
+            }
+
             if (settings.name == AppRoutes.settings) {
               return MaterialPageRoute(
                 builder: (context) => const Settings(),
@@ -227,22 +235,21 @@ class _SplashScreenState extends State<SplashScreen>
     ).animate(CurvedAnimation(parent: _controller, curve: Curves.easeInOut));
 
     _controller.forward();
-    _navigateToHomeWithDataGuarantee();
+    _navigateToMainApp(); // NAVIGATION FIX: Navigate to main app wrapper instead of just portfolio
   }
 
-  /// WEB SUPPORT: Enhanced navigation with platform-aware data loading guarantee
-  Future<void> _navigateToHomeWithDataGuarantee() async {
+  /// NAVIGATION FIX: Navigate to main app with bottom navigation
+  Future<void> _navigateToMainApp() async {
     try {
       if (kDebugMode) {
-        print('🚀 STARTUP FIX: Ensuring data is loaded before dashboard...');
+        print('🚀 STARTUP FIX: Ensuring data is loaded before main app...');
         print('🌐 Platform: ${kIsWeb ? 'Web browser' : 'Mobile device'}');
       }
 
       setState(() {
-        _loadingStatus =
-            kIsWeb
-                ? 'Loading web portfolio data...'
-                : 'Loading portfolio data...';
+        _loadingStatus = kIsWeb
+            ? 'Loading web portfolio data...'
+            : 'Loading portfolio data...';
       });
 
       // STEP 1: Platform-aware portfolio service initialization
@@ -310,15 +317,17 @@ class _SplashScreenState extends State<SplashScreen>
 
       if (mounted) {
         if (kDebugMode) {
-          print('✅ STARTUP FIX: Data guaranteed - navigating to dashboard');
+          print('✅ STARTUP FIX: Data guaranteed - navigating to main app');
           print('   📊 Data loaded: $_dataLoaded');
           print(
             '   🌐 Platform: ${kIsWeb ? 'Web optimized' : 'Mobile optimized'}',
           );
+          print('🧭 NAVIGATION FIX: Navigating to MainAppWrapper');
         }
 
+        // NAVIGATION FIX: Navigate to main app wrapper with bottom navigation
         Navigator.of(context).pushReplacement(
-          MaterialPageRoute(builder: (context) => const PortfolioDashboard()),
+          MaterialPageRoute(builder: (context) => const MainAppWrapper()),
         );
       }
     } catch (e) {
@@ -330,12 +339,12 @@ class _SplashScreenState extends State<SplashScreen>
         _loadingStatus = 'Error loading data - continuing...';
       });
 
-      // Continue to dashboard even if there are errors
+      // Continue to main app even if there are errors
       await Future.delayed(const Duration(milliseconds: 500));
 
       if (mounted) {
         Navigator.of(context).pushReplacement(
-          MaterialPageRoute(builder: (context) => const PortfolioDashboard()),
+          MaterialPageRoute(builder: (context) => const MainAppWrapper()),
         );
       }
     }
@@ -509,6 +518,236 @@ class _SplashScreenState extends State<SplashScreen>
                   ],
                 ),
               ],
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// NAVIGATION FIX: Main app wrapper with functional bottom navigation
+class MainAppWrapper extends StatefulWidget {
+  const MainAppWrapper({super.key});
+
+  @override
+  State<MainAppWrapper> createState() => _MainAppWrapperState();
+}
+
+class _MainAppWrapperState extends State<MainAppWrapper>
+    with TickerProviderStateMixin {
+  late PageController _pageController;
+  int _currentIndex = 0;
+
+  // NAVIGATION FIX: Define the screens for each tab
+  late final List<Widget> _screens;
+
+  @override
+  void initState() {
+    super.initState();
+    _pageController = PageController(initialPage: 0);
+
+    // NAVIGATION FIX: Initialize screens list
+    _screens = [
+      const PortfolioDashboard(), // Portfolio tab
+      const AddTransactionScreen(), // Transactions tab - navigate to add transaction
+      const MarketsScreen(), // Markets tab
+      const Settings(), // Settings tab
+    ];
+
+    if (kDebugMode) {
+      print(
+          '🧭 NAVIGATION FIX: MainAppWrapper initialized with ${_screens.length} screens');
+    }
+  }
+
+  @override
+  void dispose() {
+    _pageController.dispose();
+    super.dispose();
+  }
+
+  /// NAVIGATION FIX: Handle tab navigation with logging
+  void _onTabTapped(int index) {
+    if (kDebugMode) {
+      final tabNames = ['Portfolio', 'Transactions', 'Markets', 'Settings'];
+      print(
+          '🧭 NAVIGATION EVENT: Tab tapped - ${tabNames[index]} (index: $index)');
+      print('   📍 Current index: $_currentIndex -> New index: $index');
+    }
+
+    if (index == _currentIndex) return;
+
+    // Add haptic feedback for better user experience
+    HapticFeedback.lightImpact();
+
+    // NAVIGATION FIX: Smooth page transition
+    _pageController.animateToPage(
+      index,
+      duration: const Duration(milliseconds: 250),
+      curve: Curves.easeInOut,
+    );
+
+    setState(() {
+      _currentIndex = index;
+    });
+
+    if (kDebugMode) {
+      print('   ✅ NAVIGATION: Page transition initiated to index $index');
+    }
+  }
+
+  /// NAVIGATION FIX: Handle page changed event
+  void _onPageChanged(int index) {
+    if (kDebugMode) {
+      final tabNames = ['Portfolio', 'Transactions', 'Markets', 'Settings'];
+      print(
+          '🧭 NAVIGATION EVENT: Page changed to ${tabNames[index]} (index: $index)');
+    }
+
+    setState(() {
+      _currentIndex = index;
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+
+    return Scaffold(
+      backgroundColor: theme.scaffoldBackgroundColor,
+      body: PageView(
+        controller: _pageController,
+        onPageChanged: _onPageChanged,
+        children: _screens,
+      ),
+      bottomNavigationBar: Container(
+        decoration: BoxDecoration(
+          color: theme.colorScheme.surface,
+          boxShadow: [
+            BoxShadow(
+              color: theme.shadowColor.withValues(alpha: 0.1),
+              blurRadius: 8,
+              offset: const Offset(0, -2),
+            ),
+          ],
+        ),
+        child: SafeArea(
+          child: Container(
+            height: 65,
+            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceAround,
+              children: [
+                _buildNavItem(
+                  context: context,
+                  index: 0,
+                  icon: Icons.dashboard_outlined,
+                  activeIcon: Icons.dashboard,
+                  label: 'Portfolio',
+                ),
+                _buildNavItem(
+                  context: context,
+                  index: 1,
+                  icon: Icons.receipt_long_outlined,
+                  activeIcon: Icons.receipt_long,
+                  label: 'Transactions',
+                ),
+                _buildNavItem(
+                  context: context,
+                  index: 2,
+                  icon: Icons.trending_up_outlined,
+                  activeIcon: Icons.trending_up,
+                  label: 'Markets',
+                ),
+                _buildNavItem(
+                  context: context,
+                  index: 3,
+                  icon: Icons.settings_outlined,
+                  activeIcon: Icons.settings,
+                  label: 'Settings',
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+      // NAVIGATION FIX: Add floating action button for quick access to add transaction
+      floatingActionButton: _currentIndex == 0
+          ? FloatingActionButton(
+              onPressed: () {
+                if (kDebugMode) {
+                  print(
+                      '🧭 NAVIGATION EVENT: FAB tapped - navigating to add transaction');
+                }
+                HapticFeedback.lightImpact();
+                Navigator.pushNamed(context, AppRoutes.addTransaction)
+                    .then((result) {
+                  if (kDebugMode) {
+                    print(
+                        '🧭 NAVIGATION EVENT: Returned from add transaction with result: $result');
+                  }
+                });
+              },
+              backgroundColor: theme.colorScheme.secondary,
+              foregroundColor: theme.colorScheme.onSecondary,
+              elevation: 6,
+              child: const Icon(Icons.add, size: 28),
+            )
+          : null,
+    );
+  }
+
+  /// NAVIGATION FIX: Build navigation item with proper styling and interaction
+  Widget _buildNavItem({
+    required BuildContext context,
+    required int index,
+    required IconData icon,
+    required IconData activeIcon,
+    required String label,
+  }) {
+    final theme = Theme.of(context);
+    final isSelected = index == _currentIndex;
+
+    return Expanded(
+      child: GestureDetector(
+        onTap: () => _onTabTapped(index),
+        behavior: HitTestBehavior.opaque,
+        child: Container(
+          padding: const EdgeInsets.symmetric(vertical: 6),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              AnimatedContainer(
+                duration: const Duration(milliseconds: 200),
+                padding: const EdgeInsets.all(6),
+                decoration: BoxDecoration(
+                  color: isSelected
+                      ? theme.colorScheme.primary.withValues(alpha: 0.1)
+                      : Colors.transparent,
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Icon(
+                  isSelected ? activeIcon : icon,
+                  size: 24,
+                  color: isSelected
+                      ? theme.colorScheme.primary
+                      : theme.colorScheme.onSurface.withValues(alpha: 0.6),
+                ),
+              ),
+              const SizedBox(height: 2),
+              Text(
+                label,
+                style: TextStyle(
+                  fontSize: 10,
+                  fontWeight: isSelected ? FontWeight.w600 : FontWeight.w400,
+                  color: isSelected
+                      ? theme.colorScheme.primary
+                      : theme.colorScheme.onSurface.withValues(alpha: 0.6),
+                ),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+              ),
             ],
           ),
         ),

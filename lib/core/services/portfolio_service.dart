@@ -8,7 +8,6 @@ import './crypto_api_service.dart';
 import './logging_service.dart';
 import './pl_persistence_service.dart';
 import './supabase_service.dart';
-import './transaction_service.dart';
 
 // NEW: Import enhanced P&L service
 

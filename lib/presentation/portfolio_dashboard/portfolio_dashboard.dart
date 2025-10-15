@@ -11,10 +11,6 @@ import '../../core/services/crypto_service.dart';
 import '../../core/services/pl_persistence_service.dart';
 import '../../core/services/portfolio_service.dart';
 import '../../core/services/transaction_service.dart';
-import '../../routes/app_routes.dart';
-import '../../theme/app_theme.dart';
-import '../../widgets/custom_icon_widget.dart';
-import '../../widgets/custom_image_widget.dart';
 import './widgets/crypto_holding_card.dart';
 import './widgets/empty_portfolio_widget.dart';
 import './widgets/individual_transaction_tile.dart';
@@ -31,7 +27,6 @@ class PortfolioDashboard extends StatefulWidget {
 
 class _PortfolioDashboardState extends State<PortfolioDashboard>
     with TickerProviderStateMixin, AutomaticKeepAliveClientMixin {
-  late TabController _tabController;
   late AnimationController _refreshAnimationController;
   late Timer _priceUpdateTimer;
   late StreamSubscription<List<Map<String, dynamic>>> _portfolioSubscription;
@@ -45,7 +40,6 @@ class _PortfolioDashboardState extends State<PortfolioDashboard>
   bool _isLoading = true;
   bool _isRefreshing = false;
   DateTime _lastUpdated = DateTime.now();
-  int _currentTabIndex = 0;
 
   // Real portfolio data from services
   List<Map<String, dynamic>> _cryptoHoldings = [];
@@ -77,19 +71,10 @@ class _PortfolioDashboardState extends State<PortfolioDashboard>
   @override
   void initState() {
     super.initState();
-    _tabController = TabController(length: 4, vsync: this);
     _refreshAnimationController = AnimationController(
       duration: const Duration(milliseconds: 1000),
       vsync: this,
     );
-
-    _tabController.addListener(() {
-      if (_tabController.indexIsChanging) {
-        setState(() {
-          _currentTabIndex = _tabController.index;
-        });
-      }
-    });
 
     // Subscribe to portfolio updates stream
     _portfolioSubscription = _portfolioService.portfolioStream.listen((
@@ -109,11 +94,14 @@ class _PortfolioDashboardState extends State<PortfolioDashboard>
 
     // ANDROID FIX: Enhanced initialization with guaranteed data availability
     _initializePortfolioDataRobust();
+
+    if (kDebugMode) {
+      print('🏠 PORTFOLIO DASHBOARD: Initialized successfully');
+    }
   }
 
   @override
   void dispose() {
-    _tabController.dispose();
     _refreshAnimationController.dispose();
     _priceUpdateTimer.cancel();
     _portfolioSubscription.cancel();
@@ -534,12 +522,12 @@ class _PortfolioDashboardState extends State<PortfolioDashboard>
       final finalPL = profitLoss ?? (totalValue - totalInvested);
 
       // Validate P&L consistency with complete type safety - NO direct assignment
-      final plValidationResult = await _plPersistenceService
-          .validatePLConsistency(
-            totalValue: totalValue,
-            totalInvested: totalInvested,
-            profitLoss: finalPL,
-          );
+      final plValidationResult =
+          await _plPersistenceService.validatePLConsistency(
+        totalValue: totalValue,
+        totalInvested: totalInvested,
+        profitLoss: finalPL,
+      );
 
       // BULLETPROOF: Process validation result with complete type safety
       bool validationSuccessful = false;
@@ -605,10 +593,9 @@ class _PortfolioDashboardState extends State<PortfolioDashboard>
         // Recalculate P&L for consistency
         final correctedPL = totalValue - totalInvested;
         _portfolioSummary['profitLoss'] = correctedPL;
-        _portfolioSummary['percentageChange'] =
-            totalInvested != 0.0
-                ? (correctedPL / totalInvested.abs()) * 100
-                : 0.0;
+        _portfolioSummary['percentageChange'] = totalInvested != 0.0
+            ? (correctedPL / totalInvested.abs()) * 100
+            : 0.0;
 
         if (kDebugMode) {
           print(
@@ -994,6 +981,10 @@ class _PortfolioDashboardState extends State<PortfolioDashboard>
     super.build(context);
     final theme = Theme.of(context);
 
+    if (kDebugMode && _isLoading) {
+      print('🏠 PORTFOLIO DASHBOARD: Rendering loading state');
+    }
+
     // Enhanced loading check - show spinner only if no persisted data is available
     if (_isLoading &&
         _cryptoHoldings.isEmpty &&
@@ -1031,26 +1022,25 @@ class _PortfolioDashboardState extends State<PortfolioDashboard>
       );
     }
 
+    // NAVIGATION FIX: Simplified scaffold without bottom navigation (handled by MainAppWrapper)
     return Scaffold(
       backgroundColor: theme.scaffoldBackgroundColor,
       body: Column(
         children: [
           Expanded(
-            child:
-                _shouldShowEmptyState()
-                    ? EmptyPortfolioWidget(
-                      onAddFirstPurchase: () {
-                        _navigateToAddTransaction();
-                      },
-                    )
-                    : RefreshIndicator(
-                      onRefresh: _refreshPortfolio, // Enhanced manual refresh
-                      color: theme.colorScheme.primary,
-                      child:
-                          _isLoading && !_isManualRefresh
-                              ? const Center(child: CircularProgressIndicator())
-                              : _error != null
-                              ? Center(
+            child: _shouldShowEmptyState()
+                ? EmptyPortfolioWidget(
+                    onAddFirstPurchase: () {
+                      _navigateToAddTransaction();
+                    },
+                  )
+                : RefreshIndicator(
+                    onRefresh: _refreshPortfolio, // Enhanced manual refresh
+                    color: theme.colorScheme.primary,
+                    child: _isLoading && !_isManualRefresh
+                        ? const Center(child: CircularProgressIndicator())
+                        : _error != null
+                            ? Center(
                                 child: Column(
                                   mainAxisAlignment: MainAxisAlignment.center,
                                   children: [
@@ -1062,19 +1052,17 @@ class _PortfolioDashboardState extends State<PortfolioDashboard>
                                     SizedBox(height: 16),
                                     Text(
                                       'Error Loading Portfolio',
-                                      style:
-                                          Theme.of(
-                                            context,
-                                          ).textTheme.headlineSmall,
+                                      style: Theme.of(
+                                        context,
+                                      ).textTheme.headlineSmall,
                                     ),
                                     SizedBox(height: 8),
                                     Text(
                                       _error!,
                                       textAlign: TextAlign.center,
-                                      style:
-                                          Theme.of(
-                                            context,
-                                          ).textTheme.bodyMedium,
+                                      style: Theme.of(
+                                        context,
+                                      ).textTheme.bodyMedium,
                                     ),
                                     SizedBox(height: 16),
                                     ElevatedButton(
@@ -1087,703 +1075,663 @@ class _PortfolioDashboardState extends State<PortfolioDashboard>
                                   ],
                                 ),
                               )
-                              : _cryptoHoldings.isEmpty
-                              ? const EmptyPortfolioWidget()
-                              : CustomScrollView(
-                                slivers: [
-                                  SliverToBoxAdapter(
-                                    child: Column(
-                                      children: [
-                                        SizedBox(height: 6.h),
+                            : _cryptoHoldings.isEmpty
+                                ? const EmptyPortfolioWidget()
+                                : CustomScrollView(
+                                    slivers: [
+                                      SliverToBoxAdapter(
+                                        child: Column(
+                                          children: [
+                                            SizedBox(height: 6.h),
 
-                                        // Portfolio Title Header
-                                        Padding(
+                                            // Portfolio Title Header
+                                            Padding(
+                                              padding: EdgeInsets.fromLTRB(
+                                                4.w,
+                                                0,
+                                                4.w,
+                                                2.h,
+                                              ),
+                                              child: Row(
+                                                mainAxisAlignment:
+                                                    MainAxisAlignment
+                                                        .spaceBetween,
+                                                children: [
+                                                  Text(
+                                                    'Portfolio',
+                                                    style: GoogleFonts.inter(
+                                                      fontSize: 24.sp,
+                                                      fontWeight:
+                                                          FontWeight.w700,
+                                                      color: theme.colorScheme
+                                                          .onSurface,
+                                                    ),
+                                                  ),
+                                                  if (_isRefreshing)
+                                                    SizedBox(
+                                                      width: 6.w,
+                                                      height: 6.w,
+                                                      child:
+                                                          CircularProgressIndicator(
+                                                        strokeWidth: 2,
+                                                        color: theme.colorScheme
+                                                            .primary,
+                                                      ),
+                                                    ),
+                                                ],
+                                              ),
+                                            ),
+
+                                            // ENHANCED: Portfolio Summary with rate limit indicators (this contains the P&L data)
+                                            PortfolioSummaryCard(
+                                              totalValue: (_portfolioSummary[
+                                                          'totalValue'] as num?)
+                                                      ?.toDouble() ??
+                                                  0.0,
+                                              totalInvested: (_portfolioSummary[
+                                                              'totalInvested']
+                                                          as num?)
+                                                      ?.toDouble() ??
+                                                  0.0,
+                                              percentageChange: (_portfolioSummary[
+                                                              'percentageChange']
+                                                          as num?)
+                                                      ?.toDouble() ??
+                                                  0.0,
+                                              lastUpdated: DateTime.tryParse(
+                                                    _portfolioSummary[
+                                                                'lastUpdated']
+                                                            as String? ??
+                                                        '',
+                                                  ) ??
+                                                  DateTime.now(),
+                                            ),
+
+                                            // NEW: Rate limit status indicator
+                                            (_portfolioSummary[
+                                                        'shouldRecommendManualRefresh'] ==
+                                                    true)
+                                                ? Container(
+                                                    margin:
+                                                        EdgeInsets.symmetric(
+                                                      horizontal: 4.w,
+                                                      vertical: 1.h,
+                                                    ),
+                                                    padding:
+                                                        EdgeInsets.all(3.w),
+                                                    decoration: BoxDecoration(
+                                                      color: Colors.amber
+                                                          .withValues(
+                                                        alpha: 0.1,
+                                                      ),
+                                                      borderRadius:
+                                                          BorderRadius.circular(
+                                                              12),
+                                                      border: Border.all(
+                                                        color: Colors.amber
+                                                            .withValues(
+                                                                alpha: 0.3),
+                                                      ),
+                                                    ),
+                                                    child: Row(
+                                                      children: [
+                                                        Icon(
+                                                          Icons.refresh,
+                                                          color:
+                                                              Colors.amber[700],
+                                                          size: 20.sp,
+                                                        ),
+                                                        SizedBox(width: 3.w),
+                                                        Expanded(
+                                                          child: Column(
+                                                            crossAxisAlignment:
+                                                                CrossAxisAlignment
+                                                                    .start,
+                                                            children: [
+                                                              Text(
+                                                                'Data Update Available',
+                                                                style:
+                                                                    GoogleFonts
+                                                                        .inter(
+                                                                  fontSize:
+                                                                      14.sp,
+                                                                  fontWeight:
+                                                                      FontWeight
+                                                                          .w600,
+                                                                  color: Colors
+                                                                          .amber[
+                                                                      700],
+                                                                ),
+                                                              ),
+                                                              SizedBox(
+                                                                  height:
+                                                                      0.5.h),
+                                                              Text(
+                                                                'Pull down to refresh with latest market data',
+                                                                style:
+                                                                    GoogleFonts
+                                                                        .inter(
+                                                                  fontSize:
+                                                                      12.sp,
+                                                                  color: Colors
+                                                                          .amber[
+                                                                      600],
+                                                                ),
+                                                              ),
+                                                            ],
+                                                          ),
+                                                        ),
+                                                      ],
+                                                    ),
+                                                  )
+                                                : const SizedBox.shrink(),
+                                          ],
+                                        ),
+                                      ),
+                                      SliverToBoxAdapter(
+                                        child: Padding(
                                           padding: EdgeInsets.fromLTRB(
                                             4.w,
-                                            0,
-                                            4.w,
                                             2.h,
+                                            4.w,
+                                            1.h,
                                           ),
                                           child: Row(
                                             mainAxisAlignment:
                                                 MainAxisAlignment.spaceBetween,
                                             children: [
                                               Text(
-                                                'Portfolio',
+                                                _showIndividualTransactions
+                                                    ? 'Recent Transactions'
+                                                    : 'Holdings',
                                                 style: GoogleFonts.inter(
-                                                  fontSize: 24.sp,
-                                                  fontWeight: FontWeight.w700,
-                                                  color:
-                                                      theme
-                                                          .colorScheme
-                                                          .onSurface,
+                                                  fontSize: 18.sp,
+                                                  fontWeight: FontWeight.w600,
+                                                  color: theme
+                                                      .colorScheme.onSurface,
                                                 ),
                                               ),
-                                              if (_isRefreshing)
-                                                SizedBox(
-                                                  width: 6.w,
-                                                  height: 6.w,
-                                                  child:
-                                                      CircularProgressIndicator(
-                                                        strokeWidth: 2,
-                                                        color:
-                                                            theme
+                                              Row(
+                                                children: [
+                                                  GestureDetector(
+                                                    onTap: () {
+                                                      HapticFeedback
+                                                          .lightImpact();
+                                                      setState(() {
+                                                        _showIndividualTransactions =
+                                                            !_showIndividualTransactions;
+                                                      });
+                                                    },
+                                                    child: Container(
+                                                      padding:
+                                                          EdgeInsets.symmetric(
+                                                        horizontal: 3.w,
+                                                        vertical: 1.h,
+                                                      ),
+                                                      decoration: BoxDecoration(
+                                                        color: theme
+                                                            .colorScheme.primary
+                                                            .withValues(
+                                                                alpha: 0.1),
+                                                        borderRadius:
+                                                            BorderRadius
+                                                                .circular(
+                                                          8,
+                                                        ),
+                                                        border: Border.all(
+                                                          color: theme
+                                                              .colorScheme
+                                                              .primary
+                                                              .withValues(
+                                                            alpha: 0.3,
+                                                          ),
+                                                        ),
+                                                      ),
+                                                      child: Row(
+                                                        mainAxisSize:
+                                                            MainAxisSize.min,
+                                                        children: [
+                                                          CustomIconWidget(
+                                                            iconName:
+                                                                _showIndividualTransactions
+                                                                    ? 'view_list'
+                                                                    : 'dashboard',
+                                                            color: theme
                                                                 .colorScheme
                                                                 .primary,
+                                                            size: 16,
+                                                          ),
+                                                          SizedBox(width: 1.w),
+                                                          Text(
+                                                            _showIndividualTransactions
+                                                                ? 'List View'
+                                                                : 'Card View',
+                                                            style: GoogleFonts
+                                                                .inter(
+                                                              fontSize: 10.sp,
+                                                              fontWeight:
+                                                                  FontWeight
+                                                                      .w500,
+                                                              color: theme
+                                                                  .colorScheme
+                                                                  .primary,
+                                                            ),
+                                                          ),
+                                                        ],
                                                       ),
-                                                ),
-                                            ],
-                                          ),
-                                        ),
-
-                                        // ENHANCED: Portfolio Summary with rate limit indicators (this contains the P&L data)
-                                        PortfolioSummaryCard(
-                                          totalValue:
-                                              (_portfolioSummary['totalValue']
-                                                      as num?)
-                                                  ?.toDouble() ??
-                                              0.0,
-                                          totalInvested:
-                                              (_portfolioSummary['totalInvested']
-                                                      as num?)
-                                                  ?.toDouble() ??
-                                              0.0,
-                                          percentageChange:
-                                              (_portfolioSummary['percentageChange']
-                                                      as num?)
-                                                  ?.toDouble() ??
-                                              0.0,
-                                          lastUpdated:
-                                              DateTime.tryParse(
-                                                _portfolioSummary['lastUpdated']
-                                                        as String? ??
-                                                    '',
-                                              ) ??
-                                              DateTime.now(),
-                                        ),
-
-                                        // NEW: Rate limit status indicator
-                                        (_portfolioSummary['shouldRecommendManualRefresh'] ==
-                                                true)
-                                            ? Container(
-                                              margin: EdgeInsets.symmetric(
-                                                horizontal: 4.w,
-                                                vertical: 1.h,
-                                              ),
-                                              padding: EdgeInsets.all(3.w),
-                                              decoration: BoxDecoration(
-                                                color: Colors.amber.withValues(
-                                                  alpha: 0.1,
-                                                ),
-                                                borderRadius:
-                                                    BorderRadius.circular(12),
-                                                border: Border.all(
-                                                  color: Colors.amber
-                                                      .withValues(alpha: 0.3),
-                                                ),
-                                              ),
-                                              child: Row(
-                                                children: [
-                                                  Icon(
-                                                    Icons.refresh,
-                                                    color: Colors.amber[700],
-                                                    size: 20.sp,
+                                                    ),
                                                   ),
-                                                  SizedBox(width: 3.w),
-                                                  Expanded(
-                                                    child: Column(
-                                                      crossAxisAlignment:
-                                                          CrossAxisAlignment
-                                                              .start,
-                                                      children: [
-                                                        Text(
-                                                          'Data Update Available',
-                                                          style: GoogleFonts.inter(
-                                                            fontSize: 14.sp,
-                                                            fontWeight:
-                                                                FontWeight.w600,
-                                                            color:
-                                                                Colors
-                                                                    .amber[700],
-                                                          ),
-                                                        ),
-                                                        SizedBox(height: 0.5.h),
-                                                        Text(
-                                                          'Pull down to refresh with latest market data',
-                                                          style: GoogleFonts.inter(
-                                                            fontSize: 12.sp,
-                                                            color:
-                                                                Colors
-                                                                    .amber[600],
-                                                          ),
-                                                        ),
-                                                      ],
+                                                  SizedBox(width: 2.w),
+                                                  if (_isRefreshing)
+                                                    SizedBox(
+                                                      width: 4.w,
+                                                      height: 4.w,
+                                                      child:
+                                                          CircularProgressIndicator(
+                                                        strokeWidth: 2,
+                                                        color: theme.colorScheme
+                                                            .primary,
+                                                      ),
+                                                    ),
+                                                  if (_isRefreshing)
+                                                    SizedBox(width: 2.w),
+                                                  Text(
+                                                    _showIndividualTransactions
+                                                        ? '${_allTransactions.length} transactions'
+                                                        : '${_cryptoHoldings.length} assets',
+                                                    style: GoogleFonts.inter(
+                                                      fontSize: 12.sp,
+                                                      fontWeight:
+                                                          FontWeight.w400,
+                                                      color: theme
+                                                          .colorScheme.onSurface
+                                                          .withValues(
+                                                              alpha: 0.6),
                                                     ),
                                                   ),
                                                 ],
                                               ),
-                                            )
-                                            : const SizedBox.shrink(),
-                                      ],
-                                    ),
-                                  ),
-                                  SliverToBoxAdapter(
-                                    child: Padding(
-                                      padding: EdgeInsets.fromLTRB(
-                                        4.w,
-                                        2.h,
-                                        4.w,
-                                        1.h,
-                                      ),
-                                      child: Row(
-                                        mainAxisAlignment:
-                                            MainAxisAlignment.spaceBetween,
-                                        children: [
-                                          Text(
-                                            _showIndividualTransactions
-                                                ? 'Recent Transactions'
-                                                : 'Holdings',
-                                            style: GoogleFonts.inter(
-                                              fontSize: 18.sp,
-                                              fontWeight: FontWeight.w600,
-                                              color:
-                                                  theme.colorScheme.onSurface,
-                                            ),
-                                          ),
-                                          Row(
-                                            children: [
-                                              GestureDetector(
-                                                onTap: () {
-                                                  HapticFeedback.lightImpact();
-                                                  setState(() {
-                                                    _showIndividualTransactions =
-                                                        !_showIndividualTransactions;
-                                                  });
-                                                },
-                                                child: Container(
-                                                  padding: EdgeInsets.symmetric(
-                                                    horizontal: 3.w,
-                                                    vertical: 1.h,
-                                                  ),
-                                                  decoration: BoxDecoration(
-                                                    color: theme
-                                                        .colorScheme
-                                                        .primary
-                                                        .withValues(alpha: 0.1),
-                                                    borderRadius:
-                                                        BorderRadius.circular(
-                                                          8,
-                                                        ),
-                                                    border: Border.all(
-                                                      color: theme
-                                                          .colorScheme
-                                                          .primary
-                                                          .withValues(
-                                                            alpha: 0.3,
-                                                          ),
-                                                    ),
-                                                  ),
-                                                  child: Row(
-                                                    mainAxisSize:
-                                                        MainAxisSize.min,
-                                                    children: [
-                                                      CustomIconWidget(
-                                                        iconName:
-                                                            _showIndividualTransactions
-                                                                ? 'view_list'
-                                                                : 'dashboard',
-                                                        color:
-                                                            theme
-                                                                .colorScheme
-                                                                .primary,
-                                                        size: 16,
-                                                      ),
-                                                      SizedBox(width: 1.w),
-                                                      Text(
-                                                        _showIndividualTransactions
-                                                            ? 'List View'
-                                                            : 'Card View',
-                                                        style: GoogleFonts.inter(
-                                                          fontSize: 10.sp,
-                                                          fontWeight:
-                                                              FontWeight.w500,
-                                                          color:
-                                                              theme
-                                                                  .colorScheme
-                                                                  .primary,
-                                                        ),
-                                                      ),
-                                                    ],
-                                                  ),
-                                                ),
-                                              ),
-                                              SizedBox(width: 2.w),
-                                              if (_isRefreshing)
-                                                SizedBox(
-                                                  width: 4.w,
-                                                  height: 4.w,
-                                                  child:
-                                                      CircularProgressIndicator(
-                                                        strokeWidth: 2,
-                                                        color:
-                                                            theme
-                                                                .colorScheme
-                                                                .primary,
-                                                      ),
-                                                ),
-                                              if (_isRefreshing)
-                                                SizedBox(width: 2.w),
-                                              Text(
-                                                _showIndividualTransactions
-                                                    ? '${_allTransactions.length} transactions'
-                                                    : '${_cryptoHoldings.length} assets',
-                                                style: GoogleFonts.inter(
-                                                  fontSize: 12.sp,
-                                                  fontWeight: FontWeight.w400,
-                                                  color: theme
-                                                      .colorScheme
-                                                      .onSurface
-                                                      .withValues(alpha: 0.6),
-                                                ),
-                                              ),
                                             ],
                                           ),
-                                        ],
+                                        ),
                                       ),
-                                    ),
-                                  ),
-                                  // NEW: Conditional rendering based on view mode
-                                  _showIndividualTransactions
-                                      ? // Individual Transaction Tiles
-                                      SliverList(
-                                        delegate: SliverChildBuilderDelegate((
-                                          context,
-                                          index,
-                                        ) {
-                                          final transaction =
-                                              _allTransactions[index];
+                                      // NEW: Conditional rendering based on view mode
+                                      _showIndividualTransactions
+                                          ? // Individual Transaction Tiles
+                                          SliverList(
+                                              delegate:
+                                                  SliverChildBuilderDelegate((
+                                                context,
+                                                index,
+                                              ) {
+                                                final transaction =
+                                                    _allTransactions[index];
 
-                                          return IndividualTransactionTile(
-                                            transaction: transaction,
-                                            onTap: () async {
-                                              // FIXED: Navigate with complete portfolio data instead of just transaction data
-                                              try {
-                                                // Get complete crypto holding data for this cryptocurrency
-                                                final cryptoId =
-                                                    transaction['crypto_id']
-                                                        as String;
-                                                final portfolioHolding =
-                                                    await _portfolioService
-                                                        .getCryptoHolding(
+                                                return IndividualTransactionTile(
+                                                  transaction: transaction,
+                                                  onTap: () async {
+                                                    // FIXED: Navigate with complete portfolio data instead of just transaction data
+                                                    try {
+                                                      // Get complete crypto holding data for this cryptocurrency
+                                                      final cryptoId =
+                                                          transaction[
+                                                                  'crypto_id']
+                                                              as String;
+                                                      final portfolioHolding =
+                                                          await _portfolioService
+                                                              .getCryptoHolding(
+                                                        cryptoId,
+                                                      );
+
+                                                      if (portfolioHolding !=
+                                                              null &&
+                                                          mounted) {
+                                                        // Navigate with complete portfolio data
+                                                        Navigator.pushNamed(
+                                                          context,
+                                                          AppRoutes
+                                                              .cryptocurrencyDetail,
+                                                          arguments: {
+                                                            'id':
+                                                                portfolioHolding[
+                                                                    'crypto_id'],
+                                                            'symbol': portfolioHolding[
+                                                                    'crypto_symbol'] ??
+                                                                portfolioHolding[
+                                                                    'symbol'],
+                                                            'name': portfolioHolding[
+                                                                    'crypto_name'] ??
+                                                                portfolioHolding[
+                                                                    'name'],
+                                                            'icon': portfolioHolding[
+                                                                    'crypto_icon_url'] ??
+                                                                portfolioHolding[
+                                                                    'icon'],
+                                                            'currentPrice': portfolioHolding[
+                                                                    'current_price'] ??
+                                                                portfolioHolding[
+                                                                    'currentPrice'] ??
+                                                                0.0,
+                                                            'holdings': portfolioHolding[
+                                                                    'total_amount'] ??
+                                                                portfolioHolding[
+                                                                    'holdings'] ??
+                                                                0.0,
+                                                            'averagePrice': portfolioHolding[
+                                                                    'average_price'] ??
+                                                                portfolioHolding[
+                                                                    'averagePrice'] ??
+                                                                0.0,
+                                                            'priceChange24h':
+                                                                portfolioHolding[
+                                                                        'price_change_24h'] ??
+                                                                    portfolioHolding[
+                                                                        'priceChange24h'] ??
+                                                                    0.0,
+                                                            'exchange':
+                                                                portfolioHolding[
+                                                                        'exchange'] ??
+                                                                    'Unknown',
+                                                            'transactions':
+                                                                await _transactionService
+                                                                    .getTransactionsForCrypto(
+                                                              cryptoId,
+                                                            ),
+                                                          },
+                                                        );
+                                                      } else {
+                                                        // Fallback: Create portfolio data from transaction if portfolio holding not found
+                                                        final transactionsList =
+                                                            await _transactionService
+                                                                .getTransactionsForCrypto(
                                                           cryptoId,
                                                         );
 
-                                                if (portfolioHolding != null &&
-                                                    mounted) {
-                                                  // Navigate with complete portfolio data
-                                                  Navigator.pushNamed(
-                                                    context,
-                                                    AppRoutes
-                                                        .cryptocurrencyDetail,
-                                                    arguments: {
-                                                      'id':
-                                                          portfolioHolding['crypto_id'],
-                                                      'symbol':
-                                                          portfolioHolding['crypto_symbol'] ??
-                                                          portfolioHolding['symbol'],
-                                                      'name':
-                                                          portfolioHolding['crypto_name'] ??
-                                                          portfolioHolding['name'],
-                                                      'icon':
-                                                          portfolioHolding['crypto_icon_url'] ??
-                                                          portfolioHolding['icon'],
-                                                      'currentPrice':
-                                                          portfolioHolding['current_price'] ??
-                                                          portfolioHolding['currentPrice'] ??
-                                                          0.0,
-                                                      'holdings':
-                                                          portfolioHolding['total_amount'] ??
-                                                          portfolioHolding['holdings'] ??
-                                                          0.0,
-                                                      'averagePrice':
-                                                          portfolioHolding['average_price'] ??
-                                                          portfolioHolding['averagePrice'] ??
-                                                          0.0,
-                                                      'priceChange24h':
-                                                          portfolioHolding['price_change_24h'] ??
-                                                          portfolioHolding['priceChange24h'] ??
-                                                          0.0,
-                                                      'exchange':
-                                                          portfolioHolding['exchange'] ??
-                                                          'Unknown',
-                                                      'transactions':
-                                                          await _transactionService
-                                                              .getTransactionsForCrypto(
-                                                                cryptoId,
-                                                              ),
-                                                    },
-                                                  );
-                                                } else {
-                                                  // Fallback: Create portfolio data from transaction if portfolio holding not found
-                                                  final transactionsList =
-                                                      await _transactionService
-                                                          .getTransactionsForCrypto(
+                                                        // Calculate holdings and average price from transactions
+                                                        double totalAmount =
+                                                            0.0;
+                                                        double totalInvested =
+                                                            0.0;
+
+                                                        for (final tx
+                                                            in transactionsList) {
+                                                          final txType =
+                                                              tx['transaction_type']
+                                                                  as String;
+                                                          final amount = (tx[
+                                                                          'amount']
+                                                                      as num?)
+                                                                  ?.toDouble() ??
+                                                              0.0;
+                                                          final price =
+                                                              (tx['price_per_unit']
+                                                                          as num?)
+                                                                      ?.toDouble() ??
+                                                                  0.0;
+
+                                                          if (txType == 'buy') {
+                                                            totalAmount +=
+                                                                amount;
+                                                            totalInvested +=
+                                                                (amount *
+                                                                    price);
+                                                          } else if (txType ==
+                                                              'sell') {
+                                                            totalAmount -=
+                                                                amount;
+                                                            totalInvested -=
+                                                                (amount *
+                                                                    price);
+                                                          }
+                                                        }
+
+                                                        final averagePrice =
+                                                            totalAmount > 0
+                                                                ? totalInvested /
+                                                                    totalAmount
+                                                                : 0.0;
+
+                                                        // Try to get current price from crypto API
+                                                        double currentPrice =
+                                                            0.0;
+                                                        try {
+                                                          final cryptoData =
+                                                              await _cryptoService
+                                                                  .getCryptocurrencyDetails(
                                                             cryptoId,
                                                           );
+                                                          if (cryptoData !=
+                                                              null) {
+                                                            currentPrice = (cryptoData[
+                                                                            'current_price']
+                                                                        as num?)
+                                                                    ?.toDouble() ??
+                                                                0.0;
+                                                          }
+                                                        } catch (e) {
+                                                          // Use the most recent transaction price as fallback
+                                                          if (transactionsList
+                                                              .isNotEmpty) {
+                                                            currentPrice = (transactionsList
+                                                                            .first['price_per_unit']
+                                                                        as num?)
+                                                                    ?.toDouble() ??
+                                                                0.0;
+                                                          }
+                                                        }
 
-                                                  // Calculate holdings and average price from transactions
-                                                  double totalAmount = 0.0;
-                                                  double totalInvested = 0.0;
+                                                        if (mounted) {
+                                                          Navigator.pushNamed(
+                                                            context,
+                                                            AppRoutes
+                                                                .cryptocurrencyDetail,
+                                                            arguments: {
+                                                              'id': cryptoId,
+                                                              'symbol': transaction[
+                                                                  'crypto_symbol'],
+                                                              'name': transaction[
+                                                                  'crypto_name'],
+                                                              'icon': transaction[
+                                                                  'crypto_icon_url'],
+                                                              'exchange':
+                                                                  transaction[
+                                                                          'exchange'] ??
+                                                                      'Unknown',
+                                                              'transactions': [
+                                                                transaction,
+                                                              ],
+                                                              // Add fallback values to prevent zeros
+                                                              'currentPrice':
+                                                                  (transaction['price_per_unit']
+                                                                              as num?)
+                                                                          ?.toDouble() ??
+                                                                      0.0,
+                                                              'holdings': (transaction[
+                                                                              'amount']
+                                                                          as num?)
+                                                                      ?.toDouble() ??
+                                                                  0.0,
+                                                              'averagePrice':
+                                                                  (transaction['price_per_unit']
+                                                                              as num?)
+                                                                          ?.toDouble() ??
+                                                                      0.0,
+                                                              'priceChange24h':
+                                                                  0.0,
+                                                            },
+                                                          );
+                                                        }
+                                                      }
+                                                    } catch (e) {
+                                                      if (kDebugMode) {
+                                                        print(
+                                                          'Error preparing crypto detail data: $e',
+                                                        );
+                                                      }
 
-                                                  for (final tx
-                                                      in transactionsList) {
-                                                    final txType =
-                                                        tx['transaction_type']
-                                                            as String;
-                                                    final amount =
-                                                        (tx['amount'] as num?)
-                                                            ?.toDouble() ??
-                                                        0.0;
-                                                    final price =
-                                                        (tx['price_per_unit']
-                                                                as num?)
-                                                            ?.toDouble() ??
-                                                        0.0;
+                                                      // Final fallback: Navigate with original transaction data but show error
+                                                      if (mounted) {
+                                                        ScaffoldMessenger.of(
+                                                          context,
+                                                        ).showSnackBar(
+                                                          SnackBar(
+                                                            content: Text(
+                                                              'Unable to load complete cryptocurrency data. Some information may not be available.',
+                                                              style: GoogleFonts
+                                                                  .inter(
+                                                                fontSize: 12.sp,
+                                                              ),
+                                                            ),
+                                                            backgroundColor:
+                                                                AppTheme
+                                                                    .getWarningColor(
+                                                              Theme.of(
+                                                                    context,
+                                                                  ).brightness ==
+                                                                  Brightness.light,
+                                                            ),
+                                                            duration:
+                                                                const Duration(
+                                                              seconds: 3,
+                                                            ),
+                                                          ),
+                                                        );
 
-                                                    if (txType == 'buy') {
-                                                      totalAmount += amount;
-                                                      totalInvested +=
-                                                          (amount * price);
-                                                    } else if (txType ==
-                                                        'sell') {
-                                                      totalAmount -= amount;
-                                                      totalInvested -=
-                                                          (amount * price);
+                                                        Navigator.pushNamed(
+                                                          context,
+                                                          AppRoutes
+                                                              .cryptocurrencyDetail,
+                                                          arguments: {
+                                                            'id': transaction[
+                                                                'crypto_id'],
+                                                            'symbol': transaction[
+                                                                'crypto_symbol'],
+                                                            'name': transaction[
+                                                                'crypto_name'],
+                                                            'icon': transaction[
+                                                                'crypto_icon_url'],
+                                                            'exchange': transaction[
+                                                                    'exchange'] ??
+                                                                'Unknown',
+                                                            'transactions': [
+                                                              transaction,
+                                                            ],
+                                                            // Add fallback values to prevent zeros
+                                                            'currentPrice':
+                                                                (transaction['price_per_unit']
+                                                                            as num?)
+                                                                        ?.toDouble() ??
+                                                                    0.0,
+                                                            'holdings': (transaction[
+                                                                            'amount']
+                                                                        as num?)
+                                                                    ?.toDouble() ??
+                                                                0.0,
+                                                            'averagePrice':
+                                                                (transaction['price_per_unit']
+                                                                            as num?)
+                                                                        ?.toDouble() ??
+                                                                    0.0,
+                                                            'priceChange24h':
+                                                                0.0,
+                                                          },
+                                                        );
+                                                      }
                                                     }
-                                                  }
+                                                  },
+                                                  onEdit: () {
+                                                    Navigator.pushNamed(
+                                                      context,
+                                                      AppRoutes.editTransaction,
+                                                      arguments: transaction,
+                                                    ).then((result) async {
+                                                      if (result == true) {
+                                                        await _loadPortfolioDataInternal();
+                                                        await _loadAllTransactions();
+                                                      }
+                                                    });
+                                                  },
+                                                  onDelete: () =>
+                                                      _showDeleteTransactionDialog(
+                                                    context,
+                                                    transaction,
+                                                  ),
+                                                );
+                                              },
+                                                      childCount: _allTransactions
+                                                          .length),
+                                            )
+                                          : // Original Crypto Holding Cards
+                                          SliverList(
+                                              delegate:
+                                                  SliverChildBuilderDelegate((
+                                                context,
+                                                index,
+                                              ) {
+                                                final crypto =
+                                                    _cryptoHoldings[index];
 
-                                                  final averagePrice =
-                                                      totalAmount > 0
-                                                          ? totalInvested /
-                                                              totalAmount
-                                                          : 0.0;
+                                                // Convert the data format to match the expected format
+                                                final formattedCrypto = {
+                                                  'id': crypto['id'],
+                                                  'symbol': crypto['symbol'],
+                                                  'name': crypto['name'],
+                                                  'icon': crypto['icon'],
+                                                  'currentPrice':
+                                                      crypto['currentPrice'],
+                                                  'holdings':
+                                                      crypto['holdings'],
+                                                  'averagePrice':
+                                                      crypto['averagePrice'],
+                                                  'priceChange24h':
+                                                      crypto['priceChange24h'],
+                                                  'transactions':
+                                                      crypto['transactions'],
+                                                  'exchange':
+                                                      crypto['exchange'] ??
+                                                          'Unknown',
+                                                };
 
-                                                  // Try to get current price from crypto API
-                                                  double currentPrice = 0.0;
-                                                  try {
-                                                    final cryptoData =
-                                                        await _cryptoService
-                                                            .getCryptocurrencyDetails(
-                                                              cryptoId,
-                                                            );
-                                                    if (cryptoData != null) {
-                                                      currentPrice =
-                                                          (cryptoData['current_price']
-                                                                  as num?)
-                                                              ?.toDouble() ??
-                                                          0.0;
-                                                    }
-                                                  } catch (e) {
-                                                    // Use the most recent transaction price as fallback
-                                                    if (transactionsList
-                                                        .isNotEmpty) {
-                                                      currentPrice =
-                                                          (transactionsList
-                                                                      .first['price_per_unit']
-                                                                  as num?)
-                                                              ?.toDouble() ??
-                                                          0.0;
-                                                    }
-                                                  }
-
-                                                  if (mounted) {
+                                                return CryptoHoldingCard(
+                                                  cryptoData: formattedCrypto,
+                                                  onTap: () {
                                                     Navigator.pushNamed(
                                                       context,
                                                       AppRoutes
                                                           .cryptocurrencyDetail,
-                                                      arguments: {
-                                                        'id': cryptoId,
-                                                        'symbol':
-                                                            transaction['crypto_symbol'],
-                                                        'name':
-                                                            transaction['crypto_name'],
-                                                        'icon':
-                                                            transaction['crypto_icon_url'],
-                                                        'exchange':
-                                                            transaction['exchange'] ??
-                                                            'Unknown',
-                                                        'transactions': [
-                                                          transaction,
-                                                        ],
-                                                        // Add fallback values to prevent zeros
-                                                        'currentPrice':
-                                                            (transaction['price_per_unit']
-                                                                    as num?)
-                                                                ?.toDouble() ??
-                                                            0.0,
-                                                        'holdings':
-                                                            (transaction['amount']
-                                                                    as num?)
-                                                                ?.toDouble() ??
-                                                            0.0,
-                                                        'averagePrice':
-                                                            (transaction['price_per_unit']
-                                                                    as num?)
-                                                                ?.toDouble() ??
-                                                            0.0,
-                                                        'priceChange24h': 0.0,
-                                                      },
+                                                      arguments:
+                                                          formattedCrypto,
                                                     );
-                                                  }
-                                                }
-                                              } catch (e) {
-                                                if (kDebugMode) {
-                                                  print(
-                                                    'Error preparing crypto detail data: $e',
-                                                  );
-                                                }
-
-                                                // Final fallback: Navigate with original transaction data but show error
-                                                if (mounted) {
-                                                  ScaffoldMessenger.of(
-                                                    context,
-                                                  ).showSnackBar(
-                                                    SnackBar(
-                                                      content: Text(
-                                                        'Unable to load complete cryptocurrency data. Some information may not be available.',
-                                                        style:
-                                                            GoogleFonts.inter(
-                                                              fontSize: 12.sp,
-                                                            ),
-                                                      ),
-                                                      backgroundColor:
-                                                          AppTheme.getWarningColor(
-                                                            Theme.of(
-                                                                  context,
-                                                                ).brightness ==
-                                                                Brightness
-                                                                    .light,
-                                                          ),
-                                                      duration: const Duration(
-                                                        seconds: 3,
-                                                      ),
-                                                    ),
-                                                  );
-
-                                                  Navigator.pushNamed(
-                                                    context,
-                                                    AppRoutes
-                                                        .cryptocurrencyDetail,
-                                                    arguments: {
-                                                      'id':
-                                                          transaction['crypto_id'],
-                                                      'symbol':
-                                                          transaction['crypto_symbol'],
-                                                      'name':
-                                                          transaction['crypto_name'],
-                                                      'icon':
-                                                          transaction['crypto_icon_url'],
-                                                      'exchange':
-                                                          transaction['exchange'] ??
-                                                          'Unknown',
-                                                      'transactions': [
-                                                        transaction,
-                                                      ],
-                                                      // Add fallback values to prevent zeros
-                                                      'currentPrice':
-                                                          (transaction['price_per_unit']
-                                                                  as num?)
-                                                              ?.toDouble() ??
-                                                          0.0,
-                                                      'holdings':
-                                                          (transaction['amount']
-                                                                  as num?)
-                                                              ?.toDouble() ??
-                                                          0.0,
-                                                      'averagePrice':
-                                                          (transaction['price_per_unit']
-                                                                  as num?)
-                                                              ?.toDouble() ??
-                                                          0.0,
-                                                      'priceChange24h': 0.0,
-                                                    },
-                                                  );
-                                                }
-                                              }
-                                            },
-                                            onEdit: () {
-                                              Navigator.pushNamed(
-                                                context,
-                                                AppRoutes.editTransaction,
-                                                arguments: transaction,
-                                              ).then((result) async {
-                                                if (result == true) {
-                                                  await _loadPortfolioDataInternal();
-                                                  await _loadAllTransactions();
-                                                }
-                                              });
-                                            },
-                                            onDelete:
-                                                () =>
-                                                    _showDeleteTransactionDialog(
+                                                  },
+                                                  onAddPurchase: () {
+                                                    _navigateToAddTransaction();
+                                                  },
+                                                  onViewHistory: () {
+                                                    _showTransactionHistory(
                                                       context,
-                                                      transaction,
-                                                    ),
-                                          );
-                                        }, childCount: _allTransactions.length),
-                                      )
-                                      : // Original Crypto Holding Cards
-                                      SliverList(
-                                        delegate: SliverChildBuilderDelegate((
-                                          context,
-                                          index,
-                                        ) {
-                                          final crypto = _cryptoHoldings[index];
-
-                                          // Convert the data format to match the expected format
-                                          final formattedCrypto = {
-                                            'id': crypto['id'],
-                                            'symbol': crypto['symbol'],
-                                            'name': crypto['name'],
-                                            'icon': crypto['icon'],
-                                            'currentPrice':
-                                                crypto['currentPrice'],
-                                            'holdings': crypto['holdings'],
-                                            'averagePrice':
-                                                crypto['averagePrice'],
-                                            'priceChange24h':
-                                                crypto['priceChange24h'],
-                                            'transactions':
-                                                crypto['transactions'],
-                                            'exchange':
-                                                crypto['exchange'] ?? 'Unknown',
-                                          };
-
-                                          return CryptoHoldingCard(
-                                            cryptoData: formattedCrypto,
-                                            onTap: () {
-                                              Navigator.pushNamed(
-                                                context,
-                                                AppRoutes.cryptocurrencyDetail,
-                                                arguments: formattedCrypto,
-                                              );
-                                            },
-                                            onAddPurchase: () {
-                                              _navigateToAddTransaction();
-                                            },
-                                            onViewHistory: () {
-                                              _showTransactionHistory(
-                                                context,
-                                                formattedCrypto,
-                                              );
-                                            },
-                                            onDelete: () {
-                                              _showDeleteConfirmationDialog(
-                                                context,
-                                                formattedCrypto,
-                                              );
-                                            },
-                                          );
-                                        }, childCount: _cryptoHoldings.length),
+                                                      formattedCrypto,
+                                                    );
+                                                  },
+                                                  onDelete: () {
+                                                    _showDeleteConfirmationDialog(
+                                                      context,
+                                                      formattedCrypto,
+                                                    );
+                                                  },
+                                                );
+                                              },
+                                                      childCount:
+                                                          _cryptoHoldings
+                                                              .length),
+                                            ),
+                                      SliverToBoxAdapter(
+                                        child: SizedBox(height: 10.h),
                                       ),
-                                  SliverToBoxAdapter(
-                                    child: SizedBox(height: 10.h),
+                                    ],
                                   ),
-                                ],
-                              ),
-                    ),
+                  ),
           ),
         ],
-      ),
-      bottomNavigationBar: Container(
-        decoration: BoxDecoration(
-          color: theme.colorScheme.surface,
-          boxShadow: [
-            BoxShadow(
-              color: theme.shadowColor.withValues(alpha: 0.1),
-              blurRadius: 8,
-              offset: const Offset(0, -2),
-            ),
-          ],
-        ),
-        child: SafeArea(
-          child: TabBar(
-            controller: _tabController,
-            labelColor: theme.colorScheme.primary,
-            unselectedLabelColor: theme.colorScheme.onSurface.withValues(
-              alpha: 0.6,
-            ),
-            indicatorColor: Colors.transparent,
-            labelStyle: GoogleFonts.inter(
-              fontSize: 10.sp,
-              fontWeight: FontWeight.w600,
-            ),
-            unselectedLabelStyle: GoogleFonts.inter(
-              fontSize: 10.sp,
-              fontWeight: FontWeight.w400,
-            ),
-            tabs: [
-              Tab(
-                icon: CustomIconWidget(
-                  iconName: 'dashboard',
-                  color:
-                      _currentTabIndex == 0
-                          ? theme.colorScheme.primary
-                          : theme.colorScheme.onSurface.withValues(alpha: 0.6),
-                  size: 24,
-                ),
-                text: 'Portfolio',
-              ),
-              Tab(
-                icon: CustomIconWidget(
-                  iconName: 'receipt',
-                  color:
-                      _currentTabIndex == 1
-                          ? theme.colorScheme.primary
-                          : theme.colorScheme.onSurface.withValues(alpha: 0.6),
-                  size: 24,
-                ),
-                text: 'Transactions',
-              ),
-              Tab(
-                icon: CustomIconWidget(
-                  iconName: 'trending_up',
-                  color:
-                      _currentTabIndex == 2
-                          ? theme.colorScheme.primary
-                          : theme.colorScheme.onSurface.withValues(alpha: 0.6),
-                  size: 24,
-                ),
-                text: 'Markets',
-              ),
-              Tab(
-                icon: CustomIconWidget(
-                  iconName: 'settings',
-                  color:
-                      _currentTabIndex == 3
-                          ? theme.colorScheme.primary
-                          : theme.colorScheme.onSurface.withValues(alpha: 0.6),
-                  size: 24,
-                ),
-                text: 'Settings',
-              ),
-            ],
-          ),
-        ),
-      ),
-      floatingActionButton: FloatingActionButton(
-        onPressed: () {
-          HapticFeedback.lightImpact();
-          _navigateToAddTransaction();
-        },
-        backgroundColor: theme.colorScheme.secondary,
-        foregroundColor: theme.colorScheme.onSecondary,
-        elevation: 6,
-        child: CustomIconWidget(
-          iconName: 'add',
-          color: theme.colorScheme.onSecondary,
-          size: 28,
-        ),
       ),
     );
   }
@@ -1824,145 +1772,141 @@ class _PortfolioDashboardState extends State<PortfolioDashboard>
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
-      builder:
-          (context) => Container(
-            height: MediaQuery.of(context).size.height * 0.7,
-            decoration: BoxDecoration(
-              color: theme.colorScheme.surface,
-              borderRadius: const BorderRadius.vertical(
-                top: Radius.circular(16),
+      builder: (context) => Container(
+        height: MediaQuery.of(context).size.height * 0.7,
+        decoration: BoxDecoration(
+          color: theme.colorScheme.surface,
+          borderRadius: const BorderRadius.vertical(
+            top: Radius.circular(16),
+          ),
+        ),
+        child: Column(
+          children: [
+            Container(
+              width: 40,
+              height: 4,
+              margin: EdgeInsets.symmetric(vertical: 2.h),
+              decoration: BoxDecoration(
+                color: theme.colorScheme.outline.withValues(alpha: 0.3),
+                borderRadius: BorderRadius.circular(2),
               ),
             ),
-            child: Column(
-              children: [
-                Container(
-                  width: 40,
-                  height: 4,
-                  margin: EdgeInsets.symmetric(vertical: 2.h),
-                  decoration: BoxDecoration(
-                    color: theme.colorScheme.outline.withValues(alpha: 0.3),
-                    borderRadius: BorderRadius.circular(2),
-                  ),
-                ),
-                Padding(
-                  padding: EdgeInsets.symmetric(horizontal: 4.w),
-                  child: Row(
-                    children: [
-                      Container(
+            Padding(
+              padding: EdgeInsets.symmetric(horizontal: 4.w),
+              child: Row(
+                children: [
+                  Container(
+                    width: 10.w,
+                    height: 10.w,
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      color: theme.colorScheme.primary.withValues(
+                        alpha: 0.1,
+                      ),
+                    ),
+                    child: ClipOval(
+                      child: CustomImageWidget(
+                        imageUrl: crypto['icon'] as String,
                         width: 10.w,
                         height: 10.w,
-                        decoration: BoxDecoration(
-                          shape: BoxShape.circle,
-                          color: theme.colorScheme.primary.withValues(
-                            alpha: 0.1,
-                          ),
-                        ),
-                        child: ClipOval(
-                          child: CustomImageWidget(
-                            imageUrl: crypto['icon'] as String,
-                            width: 10.w,
-                            height: 10.w,
-                            fit: BoxFit.cover,
-                          ),
+                        fit: BoxFit.cover,
+                      ),
+                    ),
+                  ),
+                  SizedBox(width: 3.w),
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        '${crypto['symbol']} Transaction History',
+                        style: GoogleFonts.inter(
+                          fontSize: 16.sp,
+                          fontWeight: FontWeight.w600,
+                          color: theme.colorScheme.onSurface,
                         ),
                       ),
-                      SizedBox(width: 3.w),
-                      Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            '${crypto['symbol']} Transaction History',
-                            style: GoogleFonts.inter(
-                              fontSize: 16.sp,
-                              fontWeight: FontWeight.w600,
-                              color: theme.colorScheme.onSurface,
-                            ),
+                      Text(
+                        '${transactions.length} transactions',
+                        style: GoogleFonts.inter(
+                          fontSize: 12.sp,
+                          fontWeight: FontWeight.w400,
+                          color: theme.colorScheme.onSurface.withValues(
+                            alpha: 0.6,
                           ),
-                          Text(
-                            '${transactions.length} transactions',
-                            style: GoogleFonts.inter(
-                              fontSize: 12.sp,
-                              fontWeight: FontWeight.w400,
-                              color: theme.colorScheme.onSurface.withValues(
-                                alpha: 0.6,
-                              ),
-                            ),
-                          ),
-                        ],
+                        ),
                       ),
                     ],
                   ),
-                ),
-                const Divider(),
-                Expanded(
-                  child: ListView.builder(
-                    itemCount: transactions.length,
-                    itemBuilder: (context, index) {
-                      final transaction = transactions[index];
-                      final transactionData =
-                          transaction['transactions']?[0] ?? transaction;
-                      final timestamp =
-                          transactionData['timestamp'] is DateTime
-                              ? transactionData['timestamp'] as DateTime
-                              : DateTime.parse(
-                                transaction['date'] ??
-                                    DateTime.now().toIso8601String(),
-                              );
-                      final amount =
-                          (transactionData['amount'] as num).toDouble();
-                      final price =
-                          (transactionData['price'] as num).toDouble();
-                      final total = amount * price;
-
-                      return ListTile(
-                        leading: Container(
-                          width: 40,
-                          height: 40,
-                          decoration: BoxDecoration(
-                            color: AppTheme.getSuccessColor(
-                              theme.brightness == Brightness.light,
-                            ).withValues(alpha: 0.1),
-                            shape: BoxShape.circle,
-                          ),
-                          child: CustomIconWidget(
-                            iconName: 'add_circle',
-                            color: AppTheme.getSuccessColor(
-                              theme.brightness == Brightness.light,
-                            ),
-                            size: 20,
-                          ),
-                        ),
-                        title: Text(
-                          'Buy ${amount.toStringAsFixed(4)} ${crypto['symbol']}',
-                          style: GoogleFonts.inter(
-                            fontSize: 14.sp,
-                            fontWeight: FontWeight.w500,
-                          ),
-                        ),
-                        subtitle: Text(
-                          '${timestamp.month}/${timestamp.day}/${timestamp.year} • \$${price.toStringAsFixed(2)} per ${crypto['symbol']}',
-                          style: GoogleFonts.inter(
-                            fontSize: 12.sp,
-                            color: theme.colorScheme.onSurface.withValues(
-                              alpha: 0.6,
-                            ),
-                          ),
-                        ),
-                        trailing: Text(
-                          '\$${total.toStringAsFixed(2)}',
-                          style: GoogleFonts.jetBrainsMono(
-                            fontSize: 14.sp,
-                            fontWeight: FontWeight.w600,
-                            color: theme.colorScheme.onSurface,
-                          ),
-                        ),
-                      );
-                    },
-                  ),
-                ),
-              ],
+                ],
+              ),
             ),
-          ),
+            const Divider(),
+            Expanded(
+              child: ListView.builder(
+                itemCount: transactions.length,
+                itemBuilder: (context, index) {
+                  final transaction = transactions[index];
+                  final transactionData =
+                      transaction['transactions']?[0] ?? transaction;
+                  final timestamp = transactionData['timestamp'] is DateTime
+                      ? transactionData['timestamp'] as DateTime
+                      : DateTime.parse(
+                          transaction['date'] ??
+                              DateTime.now().toIso8601String(),
+                        );
+                  final amount = (transactionData['amount'] as num).toDouble();
+                  final price = (transactionData['price'] as num).toDouble();
+                  final total = amount * price;
+
+                  return ListTile(
+                    leading: Container(
+                      width: 40,
+                      height: 40,
+                      decoration: BoxDecoration(
+                        color: AppTheme.getSuccessColor(
+                          theme.brightness == Brightness.light,
+                        ).withValues(alpha: 0.1),
+                        shape: BoxShape.circle,
+                      ),
+                      child: CustomIconWidget(
+                        iconName: 'add_circle',
+                        color: AppTheme.getSuccessColor(
+                          theme.brightness == Brightness.light,
+                        ),
+                        size: 20,
+                      ),
+                    ),
+                    title: Text(
+                      'Buy ${amount.toStringAsFixed(4)} ${crypto['symbol']}',
+                      style: GoogleFonts.inter(
+                        fontSize: 14.sp,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                    subtitle: Text(
+                      '${timestamp.month}/${timestamp.day}/${timestamp.year} • \$${price.toStringAsFixed(2)} per ${crypto['symbol']}',
+                      style: GoogleFonts.inter(
+                        fontSize: 12.sp,
+                        color: theme.colorScheme.onSurface.withValues(
+                          alpha: 0.6,
+                        ),
+                      ),
+                    ),
+                    trailing: Text(
+                      '\$${total.toStringAsFixed(2)}',
+                      style: GoogleFonts.jetBrainsMono(
+                        fontSize: 14.sp,
+                        fontWeight: FontWeight.w600,
+                        color: theme.colorScheme.onSurface,
+                      ),
+                    ),
+                  );
+                },
+              ),
+            ),
+          ],
+        ),
+      ),
     );
   }
 

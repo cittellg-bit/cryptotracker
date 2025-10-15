@@ -1,6 +1,9 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
+
+import '../routes/app_routes.dart';
 
 enum CustomBottomBarVariant {
   standard,
@@ -9,6 +12,7 @@ enum CustomBottomBarVariant {
   withFab,
 }
 
+/// NAVIGATION FIX: Updated CustomBottomBar with proper navigation handling
 class CustomBottomBar extends StatefulWidget {
   final CustomBottomBarVariant variant;
   final int currentIndex;
@@ -42,30 +46,31 @@ class _CustomBottomBarState extends State<CustomBottomBar>
   late AnimationController _animationController;
   late Animation<double> _animation;
 
+  // NAVIGATION FIX: Updated bottom bar items with correct routes
   final List<_BottomBarItem> _items = [
     _BottomBarItem(
       icon: Icons.dashboard_outlined,
       activeIcon: Icons.dashboard,
       label: 'Portfolio',
-      route: '/portfolio-dashboard',
+      route: AppRoutes.portfolioDashboard,
     ),
     _BottomBarItem(
-      icon: Icons.currency_bitcoin_outlined,
-      activeIcon: Icons.currency_bitcoin,
+      icon: Icons.receipt_long_outlined,
+      activeIcon: Icons.receipt_long,
+      label: 'Transactions',
+      route: AppRoutes.addTransaction,
+    ),
+    _BottomBarItem(
+      icon: Icons.trending_up_outlined,
+      activeIcon: Icons.trending_up,
       label: 'Markets',
-      route: '/cryptocurrency-detail',
-    ),
-    _BottomBarItem(
-      icon: Icons.add_circle_outline,
-      activeIcon: Icons.add_circle,
-      label: 'Add',
-      route: '/edit-transaction',
+      route: AppRoutes.markets,
     ),
     _BottomBarItem(
       icon: Icons.settings_outlined,
       activeIcon: Icons.settings,
       label: 'Settings',
-      route: '/settings',
+      route: AppRoutes.settings,
     ),
   ];
 
@@ -80,6 +85,10 @@ class _CustomBottomBarState extends State<CustomBottomBar>
       parent: _animationController,
       curve: Curves.easeInOut,
     );
+
+    if (kDebugMode) {
+      print('🧭 CUSTOM BOTTOM BAR: Initialized with ${_items.length} items');
+    }
   }
 
   @override
@@ -403,7 +412,7 @@ class _CustomBottomBarState extends State<CustomBottomBar>
         color: Colors.transparent,
         child: InkWell(
           borderRadius: BorderRadius.circular(28),
-          onTap: () => _onItemTapped(context, 2, '/edit-transaction'),
+          onTap: () => _onItemTapped(context, 2, AppRoutes.addTransaction),
           child: Icon(
             Icons.add,
             size: 28,
@@ -414,8 +423,18 @@ class _CustomBottomBarState extends State<CustomBottomBar>
     );
   }
 
+  // NAVIGATION FIX: Updated navigation handling with proper logging
   void _onItemTapped(BuildContext context, int index, String route) {
-    if (index == widget.currentIndex) return;
+    if (index == widget.currentIndex) {
+      if (kDebugMode) {
+        print('🧭 CUSTOM BOTTOM BAR: Already on tab $index, ignoring tap');
+      }
+      return;
+    }
+
+    if (kDebugMode) {
+      print('🧭 CUSTOM BOTTOM BAR: Item tapped - index: $index, route: $route');
+    }
 
     HapticFeedback.lightImpact();
 
@@ -427,10 +446,9 @@ class _CustomBottomBarState extends State<CustomBottomBar>
     // Call the onTap callback
     widget.onTap?.call(index);
 
-    // Navigate to the route
-    final currentRoute = ModalRoute.of(context)?.settings.name;
-    if (currentRoute != route) {
-      Navigator.pushReplacementNamed(context, route);
+    if (kDebugMode) {
+      print(
+          '🧭 CUSTOM BOTTOM BAR: Navigation callback completed for index $index');
     }
   }
 }

@@ -6,8 +6,6 @@ import 'package:sizer/sizer.dart';
 
 import '../../core/app_export.dart';
 import '../../core/services/crypto_service.dart';
-import '../../theme/app_theme.dart';
-import '../../widgets/custom_icon_widget.dart';
 import './widgets/crypto_list_item_widget.dart';
 import './widgets/crypto_search_widget.dart';
 
