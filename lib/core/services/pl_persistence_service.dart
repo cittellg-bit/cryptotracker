@@ -149,13 +149,8 @@ class PLPersistenceService {
       final prefs = await SharedPreferences.getInstance();
       String? snapshotJson = prefs.getString(_plSnapshotKey);
 
-      // Add null check before jsonDecode
+      // Add null check before decoding
       if (snapshotJson == null) {
-        await _logDiagnostic(
-          level: 'INFO',
-          message: 'No P&L snapshot found',
-          data: {'isStartupSession': isStartupSession},
-        );
         return null;
       }
 

@@ -15,13 +15,15 @@ void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
   if (kDebugMode) {
+    // WEB SUPPORT: Enhanced logging for platform detection
     print(
       '🚀 STARTUP FIX: Starting CryptoTracker with enhanced data loading...',
     );
+    print('🌐 PLATFORM: Running on ${kIsWeb ? 'WEB' : 'MOBILE'}');
   }
 
   try {
-    // STARTUP FIX: Enhanced initialization with guaranteed data availability
+    // WEB SUPPORT: Platform-aware initialization with guaranteed data availability
     await _initializeAppWithDataPersistence();
 
     // Initialize mock auth service and auto-authenticate
@@ -41,22 +43,38 @@ void main() async {
 
   if (kDebugMode) {
     print('✅ STARTUP FIX: App started with guaranteed data availability');
+    print('🌐 Platform optimized: ${kIsWeb ? 'WEB MODE' : 'MOBILE MODE'}');
   }
 
   runApp(const MyApp());
 }
 
-/// STARTUP FIX: Enhanced app initialization with guaranteed data loading
+/// WEB SUPPORT: Enhanced app initialization with platform-aware data loading
 Future<void> _initializeAppWithDataPersistence() async {
   try {
     if (kDebugMode) {
       print('🔄 STARTUP FIX: Initializing app with data persistence...');
+      print(
+        '🌐 Platform detection: ${kIsWeb ? 'Web browser' : 'Mobile device'}',
+      );
     }
 
-    // CRITICAL: Initialize portfolio service with data loading guarantee
-    await PortfolioService.instance.initializeForAndroid();
+    // WEB SUPPORT: Platform-specific portfolio service initialization
+    if (kIsWeb) {
+      // WEB: Initialize with web-optimized settings
+      await PortfolioService.instance.initializeForWeb();
+      if (kDebugMode) {
+        print('🌐 Portfolio service initialized for WEB platform');
+      }
+    } else {
+      // MOBILE: Use existing Android initialization (unchanged)
+      await PortfolioService.instance.initializeForAndroid();
+      if (kDebugMode) {
+        print('📱 Portfolio service initialized for MOBILE platform');
+      }
+    }
 
-    // CRITICAL: Pre-load P&L data synchronously to prevent empty state
+    // CRITICAL: Pre-load P&L data synchronously to prevent empty state (works on both platforms)
     final plSnapshot = await PLPersistenceService.instance.loadPLSnapshot();
     if (plSnapshot != null) {
       final plValue = (plSnapshot['profitLoss'] as num).toDouble();
@@ -66,13 +84,14 @@ Future<void> _initializeAppWithDataPersistence() async {
         print('✅ STARTUP FIX: Pre-loaded P&L data for immediate display:');
         print('   💰 P&L: \$${plValue.toStringAsFixed(2)}');
         print('   📊 Total Value: \$${totalValue.toStringAsFixed(2)}');
+        print('   🌐 Platform: ${kIsWeb ? 'Web' : 'Mobile'}');
       }
 
       // Force portfolio service to use this data immediately
       await PortfolioService.instance.getCachedPortfolioSummary();
     }
 
-    // STARTUP FIX: Verify transaction data is available
+    // STARTUP FIX: Verify transaction data is available (platform-independent)
     final portfolioService = PortfolioService.instance;
     final holdings = await portfolioService.getPortfolioWithCurrentPrices();
 
@@ -80,6 +99,7 @@ Future<void> _initializeAppWithDataPersistence() async {
       print('🔍 STARTUP FIX: Data availability check:');
       print('   📈 Holdings: ${holdings.length}');
       print('   🔄 Service initialized: ${portfolioService.isInitialized}');
+      print('   🌐 Platform: ${kIsWeb ? 'Web optimized' : 'Mobile optimized'}');
     }
 
     // Add startup integrity check with delay debugging
@@ -93,7 +113,7 @@ Future<void> _initializeAppWithDataPersistence() async {
   }
 }
 
-/// STARTUP FIX: Log comprehensive startup data integrity
+/// STARTUP FIX: Log comprehensive startup data integrity (platform-aware)
 Future<void> _logStartupDataIntegrity() async {
   try {
     final plService = PLPersistenceService.instance;
@@ -108,6 +128,7 @@ Future<void> _logStartupDataIntegrity() async {
     final holdings = await portfolioService.getPortfolioWithCurrentPrices();
 
     print('📊 STARTUP INTEGRITY CHECK:');
+    print('   🌐 Platform: ${kIsWeb ? 'Web Browser' : 'Mobile Device'}');
     print('   💾 P&L Snapshot Available: ${plSnapshot != null}');
     if (plSnapshot != null) {
       print(
@@ -174,7 +195,7 @@ class MyApp extends StatelessWidget {
   }
 }
 
-/// STARTUP FIX: Enhanced splash screen with guaranteed data loading
+/// WEB SUPPORT: Enhanced splash screen with platform-aware data loading
 class SplashScreen extends StatefulWidget {
   const SplashScreen({super.key});
 
@@ -209,21 +230,29 @@ class _SplashScreenState extends State<SplashScreen>
     _navigateToHomeWithDataGuarantee();
   }
 
-  /// STARTUP FIX: Enhanced navigation with data loading guarantee
+  /// WEB SUPPORT: Enhanced navigation with platform-aware data loading guarantee
   Future<void> _navigateToHomeWithDataGuarantee() async {
     try {
       if (kDebugMode) {
         print('🚀 STARTUP FIX: Ensuring data is loaded before dashboard...');
+        print('🌐 Platform: ${kIsWeb ? 'Web browser' : 'Mobile device'}');
       }
 
       setState(() {
-        _loadingStatus = 'Loading portfolio data...';
+        _loadingStatus =
+            kIsWeb
+                ? 'Loading web portfolio data...'
+                : 'Loading portfolio data...';
       });
 
-      // STEP 1: Ensure portfolio service is ready with data
+      // STEP 1: Platform-aware portfolio service initialization
       final portfolioService = PortfolioService.instance;
       if (!portfolioService.isInitialized) {
-        await portfolioService.initializeForAndroid();
+        if (kIsWeb) {
+          await portfolioService.initializeForWeb();
+        } else {
+          await portfolioService.initializeForAndroid();
+        }
       }
 
       // STEP 2: CRITICAL - Check for existing data and load it synchronously
@@ -238,6 +267,9 @@ class _SplashScreenState extends State<SplashScreen>
         if (kDebugMode) {
           print(
             '✅ STARTUP FIX: Found persisted P&L data - loading immediately',
+          );
+          print(
+            '🌐 Platform optimization: ${kIsWeb ? 'Web mode' : 'Mobile mode'}',
           );
         }
 
@@ -280,6 +312,9 @@ class _SplashScreenState extends State<SplashScreen>
         if (kDebugMode) {
           print('✅ STARTUP FIX: Data guaranteed - navigating to dashboard');
           print('   📊 Data loaded: $_dataLoaded');
+          print(
+            '   🌐 Platform: ${kIsWeb ? 'Web optimized' : 'Mobile optimized'}',
+          );
         }
 
         Navigator.of(context).pushReplacement(
@@ -306,7 +341,7 @@ class _SplashScreenState extends State<SplashScreen>
     }
   }
 
-  /// STARTUP FIX: Perform integrity checks before dashboard load
+  /// STARTUP FIX: Perform integrity checks before dashboard load (platform-independent)
   Future<void> _performStartupIntegrityCheck() async {
     try {
       final portfolioService = PortfolioService.instance;
@@ -320,6 +355,7 @@ class _SplashScreenState extends State<SplashScreen>
 
       if (kDebugMode) {
         print('🔍 STARTUP INTEGRITY CHECK:');
+        print('   🌐 Platform: ${kIsWeb ? 'Web' : 'Mobile'}');
         print('   💰 Total Value: \$${totalValue.toStringAsFixed(2)}');
         print('   💵 Total Invested: \$${totalInvested.toStringAsFixed(2)}');
         print('   📊 Profit/Loss: \$${profitLoss.toStringAsFixed(2)}');
@@ -409,6 +445,36 @@ class _SplashScreenState extends State<SplashScreen>
                   fontWeight: FontWeight.w400,
                 ),
               ),
+              // WEB SUPPORT: Platform indicator
+              if (kIsWeb) ...[
+                SizedBox(height: 1.h),
+                Container(
+                  padding: EdgeInsets.symmetric(horizontal: 3.w, vertical: 1.h),
+                  decoration: BoxDecoration(
+                    color: theme.colorScheme.primary.withAlpha(25),
+                    borderRadius: BorderRadius.circular(2.w),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(
+                        Icons.language,
+                        color: theme.colorScheme.primary,
+                        size: 12.sp,
+                      ),
+                      SizedBox(width: 1.w),
+                      Text(
+                        'Web Version',
+                        style: TextStyle(
+                          fontSize: 12.sp,
+                          color: theme.colorScheme.primary,
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
               SizedBox(height: 6.h),
               SizedBox(
                 width: 8.w,
@@ -436,6 +502,10 @@ class _SplashScreenState extends State<SplashScreen>
                         fontWeight: FontWeight.w500,
                       ),
                     ),
+                    if (kIsWeb) ...[
+                      SizedBox(width: 1.w),
+                      Icon(Icons.language, color: Colors.green, size: 14.sp),
+                    ],
                   ],
                 ),
               ],

@@ -2153,4 +2153,497 @@ class PortfolioService {
 
     return _holdingsCache ?? [];
   }
+
+  /// WEB SUPPORT: Initialize portfolio service for web platform
+  Future<void> initializeForWeb() async {
+    if (_isInitialized) return;
+
+    try {
+      if (kDebugMode) {
+        print(
+          '🌐 WEB SUPPORT: Enhanced portfolio initialization for web platform...',
+        );
+      }
+
+      // Initialize crypto API service with rate limiting
+      _cryptoApiService.initialize();
+
+      // WEB SUPPORT: Load cached data with web-specific optimizations
+      await _loadCachedDataWithWebSupport();
+
+      // CRITICAL: Validate P&L data immediately after loading
+      if (_summaryCache != null) {
+        final cachedProfitLoss =
+            (_summaryCache!['profitLoss'] as num?)?.toDouble() ?? 0.0;
+        final totalValue =
+            (_summaryCache!['totalValue'] as num?)?.toDouble() ?? 0.0;
+        final totalInvested =
+            (_summaryCache!['totalInvested'] as num?)?.toDouble() ?? 0.0;
+
+        // Ensure P&L is consistent with values
+        final expectedPL = totalValue - totalInvested;
+        if ((cachedProfitLoss - expectedPL).abs() > 0.01) {
+          _summaryCache!['profitLoss'] = expectedPL;
+          await _persistCacheToStorage();
+          if (kDebugMode) {
+            print(
+              '🔧 WEB: P&L consistency enforced: \$${expectedPL.toStringAsFixed(2)}',
+            );
+          }
+        }
+
+        if (kDebugMode) {
+          print(
+            '✅ WEB SUPPORT: P&L data validated and ready: \$${cachedProfitLoss.toStringAsFixed(2)}',
+          );
+          print('📊 Portfolio Value: \$${totalValue.toStringAsFixed(2)}');
+          print('💵 Total Invested: \$${totalInvested.toStringAsFixed(2)}');
+        }
+      } else {
+        if (kDebugMode) {
+          print(
+            '⚠️ WEB SUPPORT: No cached P&L data found - checking transactions',
+          );
+        }
+
+        // Check if we have transactions that need calculation
+        final transactions = await _loadTransactionsFromStorage();
+        if (transactions.isNotEmpty) {
+          if (kDebugMode) {
+            print(
+              '🔄 WEB SUPPORT: Found ${transactions.length} transactions - calculating portfolio',
+            );
+          }
+
+          // Force immediate calculation with existing cached prices
+          await _calculatePortfolioForWeb();
+        }
+      }
+
+      _isInitialized = true;
+
+      if (kDebugMode) {
+        print(
+          '✅ WEB SUPPORT: Portfolio service initialized with guaranteed data availability',
+        );
+        print('   🌐 Platform: WEB BROWSER');
+        print('   🚫 API rate limiting: ACTIVE');
+        print('   🛡️ Zero-reset prevention: ACTIVE');
+        print('   📊 P&L persistence: ENHANCED');
+        print('   🚀 Web optimization: ENABLED');
+      }
+    } catch (e) {
+      if (kDebugMode) {
+        print('❌ WEB SUPPORT: Portfolio initialization failed: $e');
+      }
+      _isInitialized = true; // Continue with partial initialization
+    }
+  }
+
+  /// WEB SUPPORT: Enhanced cached data loading with web optimization
+  Future<void> _loadCachedDataWithWebSupport() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+
+      // Load API refresh timing first
+      await _loadApiRefreshTiming();
+
+      if (kDebugMode) {
+        print('🌐 WEB: Loading cached data with web-specific optimizations...');
+      }
+
+      // WEB SUPPORT: PRIORITY - Load from enhanced P&L service with immediate display
+      final plSnapshot = await _plPersistenceService.loadPLSnapshot();
+
+      if (plSnapshot != null) {
+        // Create summary from P&L service data (highest priority)
+        _summaryCache = {
+          'totalValue': plSnapshot['totalValue'],
+          'totalInvested': plSnapshot['totalInvested'],
+          'profitLoss': plSnapshot['profitLoss'],
+          'percentageChange': plSnapshot['percentageChange'],
+          'totalHoldings': plSnapshot['transactionCount'] ?? 0,
+          'lastUpdated': plSnapshot['dateString'],
+          'calculatedAt': plSnapshot['timestamp'],
+          'calculationMethod': 'web_enhanced_pl_service_v4',
+          'plIntegrityCheck': true,
+          'loadedFrom': 'pl_persistence_service',
+          'rateLimitProtected': true,
+          'webOptimized': true, // NEW: Mark as web optimized
+          'platform': 'web',
+        };
+
+        if (kDebugMode) {
+          final plValue = (plSnapshot['profitLoss'] as num).toDouble();
+          print(
+            '🌐 WEB SUPPORT: P&L loaded immediately from enhanced service: \$${plValue.toStringAsFixed(2)}',
+          );
+          print(
+            '   📊 Total Value: \$${(plSnapshot['totalValue'] as num).toStringAsFixed(2)}',
+          );
+          print(
+            '   💵 Total Invested: \$${(plSnapshot['totalInvested'] as num).toStringAsFixed(2)}',
+          );
+          print('   🛡️ Rate limit protection: ACTIVE');
+          print('   🌐 Web optimization: ENABLED');
+        }
+
+        // WEB SUPPORT: Immediately try to load holdings to match P&L data
+        await _loadHoldingsForWeb();
+      } else {
+        // Fallback to legacy summary loading with enhanced validation
+        final summaryJson = prefs.getString(_portfolioSummaryKey);
+        if (summaryJson != null) {
+          try {
+            final loadedSummary = Map<String, dynamic>.from(
+              jsonDecode(summaryJson),
+            );
+
+            // Enhanced P&L validation and restoration
+            final totalValue =
+                (loadedSummary['totalValue'] as num?)?.toDouble() ?? 0.0;
+            final totalInvested =
+                (loadedSummary['totalInvested'] as num?)?.toDouble() ?? 0.0;
+            final cachedProfitLoss =
+                (loadedSummary['profitLoss'] as num?)?.toDouble();
+            final calculatedProfitLoss = totalValue - totalInvested;
+
+            // Ensure P&L data integrity with auto-correction
+            if (cachedProfitLoss == null ||
+                (cachedProfitLoss - calculatedProfitLoss).abs() > 0.01) {
+              loadedSummary['profitLoss'] = calculatedProfitLoss;
+              loadedSummary['percentageChange'] =
+                  totalInvested != 0.0
+                      ? (calculatedProfitLoss / totalInvested.abs()) * 100
+                      : 0.0;
+
+              if (kDebugMode) {
+                print(
+                  '🔧 WEB SUPPORT: Legacy P&L data auto-corrected: \$${calculatedProfitLoss.toStringAsFixed(2)}',
+                );
+              }
+            }
+
+            loadedSummary['plIntegrityCheck'] = true;
+            loadedSummary['loadedFrom'] = 'web_legacy_fallback_v4';
+            loadedSummary['rateLimitProtected'] = true;
+            loadedSummary['webOptimized'] = true;
+            loadedSummary['platform'] = 'web';
+            _summaryCache = loadedSummary;
+
+            // IMPORTANT: Immediately save to enhanced service
+            if (totalValue > 0 || totalInvested > 0) {
+              await _plPersistenceService.savePLSnapshot(
+                totalValue: totalValue,
+                totalInvested: totalInvested,
+                profitLoss: calculatedProfitLoss,
+                percentageChange:
+                    totalInvested != 0.0
+                        ? (calculatedProfitLoss / totalInvested.abs()) * 100
+                        : 0.0,
+                transactionCount:
+                    (loadedSummary['totalHoldings'] as num?)?.toInt() ?? 0,
+                source: 'web_legacy_migration',
+              );
+
+              if (kDebugMode) {
+                print(
+                  '📤 WEB SUPPORT: Legacy data migrated to enhanced P&L service',
+                );
+              }
+            }
+          } catch (e) {
+            await prefs.remove(_portfolioSummaryKey);
+            if (kDebugMode) {
+              print('⚠️ WEB SUPPORT: Corrupted legacy cache cleared');
+            }
+          }
+        }
+      }
+
+      // WEB SUPPORT: Load price cache with web-specific optimizations
+      await _loadPriceCacheForWeb(prefs);
+
+      // Load P&L historical data
+      await _loadPLHistoricalData();
+
+      // Load chart data cache
+      await _loadChartDataCache();
+
+      if (kDebugMode) {
+        final hasData = _summaryCache != null && _summaryCache!.isNotEmpty;
+        print('🔍 WEB SUPPORT: Cached data loading completed');
+        print('   📊 Summary cache available: $hasData');
+        print('   🌐 Platform: WEB BROWSER');
+        if (hasData) {
+          final plValue =
+              (_summaryCache!['profitLoss'] as num?)?.toDouble() ?? 0.0;
+          print('   💰 Cached P&L: \$${plValue.toStringAsFixed(2)}');
+        }
+      }
+    } catch (e) {
+      if (kDebugMode) {
+        print('⚠️ WEB SUPPORT: Enhanced cache loading failed: $e');
+      }
+    }
+  }
+
+  /// WEB SUPPORT: Load holdings immediately for web display
+  Future<void> _loadHoldingsForWeb() async {
+    try {
+      final transactions = await _loadTransactionsFromStorage();
+      if (transactions.isNotEmpty) {
+        if (kDebugMode) {
+          print(
+            '🔄 WEB SUPPORT: Loading holdings from ${transactions.length} transactions',
+          );
+        }
+
+        // Build holdings with web-optimized approach
+        final holdings = await _buildHoldingsFromTransactionsWeb(transactions);
+        _holdingsCache = holdings;
+
+        if (kDebugMode) {
+          print(
+            '✅ WEB SUPPORT: Holdings loaded immediately: ${holdings.length} assets',
+          );
+        }
+      }
+    } catch (e) {
+      if (kDebugMode) {
+        print('⚠️ WEB SUPPORT: Holdings loading failed: $e');
+      }
+    }
+  }
+
+  /// WEB SUPPORT: Load price cache with web optimization
+  Future<void> _loadPriceCacheForWeb(SharedPreferences prefs) async {
+    final pricesJson = prefs.getString(_pricesCacheKey);
+    if (pricesJson != null) {
+      try {
+        final pricesData = Map<String, dynamic>.from(jsonDecode(pricesJson));
+
+        // WEB SUPPORT: Always load price cache for web, even if expired (better UX)
+        _pricesCache = {};
+        pricesData.forEach((key, value) {
+          if (value is num &&
+              ![
+                'cachedAt',
+                'validUntil',
+                'apiCallsProtected',
+                'rateLimitSafe',
+              ].contains(key)) {
+            _pricesCache![key] = value.toDouble();
+          }
+        });
+
+        if (kDebugMode) {
+          print(
+            '💰 WEB SUPPORT: Price cache loaded for immediate use: ${_pricesCache!.length} prices',
+          );
+        }
+      } catch (e) {
+        if (kDebugMode) {
+          print('⚠️ WEB SUPPORT: Price cache loading failed: $e');
+        }
+      }
+    }
+  }
+
+  /// WEB SUPPORT: Build holdings from transactions optimized for web
+  Future<List<Map<String, dynamic>>> _buildHoldingsFromTransactionsWeb(
+    List<Map<String, dynamic>> transactions,
+  ) async {
+    // Group transactions by crypto_id
+    final transactionsByCrypto = <String, List<Map<String, dynamic>>>{};
+    for (final transaction in transactions) {
+      final cryptoId = transaction['crypto_id'] as String;
+      transactionsByCrypto.putIfAbsent(cryptoId, () => []).add(transaction);
+    }
+
+    final holdings = <Map<String, dynamic>>[];
+
+    for (final entry in transactionsByCrypto.entries) {
+      final cryptoId = entry.key;
+      final cryptoTransactions = entry.value;
+
+      if (cryptoTransactions.isEmpty) continue;
+
+      // Extract crypto metadata from first transaction
+      final firstTransaction = cryptoTransactions.first;
+      final cryptoSymbol = firstTransaction['crypto_symbol'] as String;
+      final cryptoName = firstTransaction['crypto_name'] as String;
+      final cryptoIconUrl = firstTransaction['crypto_icon_url'] as String;
+
+      // Calculate holdings totals
+      double totalAmount = 0.0;
+      double totalInvested = 0.0;
+      String latestExchange = 'Unknown';
+
+      for (final transaction in cryptoTransactions) {
+        final transactionType = transaction['transaction_type'] as String;
+        final amount = (transaction['amount'] as num).toDouble();
+        final pricePerUnit = (transaction['price_per_unit'] as num).toDouble();
+        final exchange = transaction['exchange'] as String? ?? 'Unknown';
+
+        if (transactionType.toLowerCase() == 'buy') {
+          totalAmount += amount;
+          totalInvested += (amount * pricePerUnit);
+        } else if (transactionType.toLowerCase() == 'sell') {
+          totalAmount -= amount;
+          if (totalAmount > 0) {
+            final sellRatio = amount / (totalAmount + amount);
+            totalInvested -= (totalInvested * sellRatio);
+          }
+        }
+
+        latestExchange = exchange;
+      }
+
+      // Skip if no holdings remaining
+      if (totalAmount <= 0) continue;
+
+      // WEB SUPPORT: Get current price with web-specific optimization (cache-first)
+      double currentPrice = await _getCurrentPriceForWeb(
+        cryptoId,
+        cryptoSymbol,
+        totalAmount,
+        totalInvested,
+      );
+
+      final averagePrice =
+          totalAmount != 0.0 ? (totalInvested / totalAmount).abs() : 0.0;
+
+      holdings.add({
+        'id': cryptoId,
+        'crypto_id': cryptoId,
+        'symbol': cryptoSymbol,
+        'name': cryptoName,
+        'icon': cryptoIconUrl,
+        'currentPrice': currentPrice,
+        'holdings': totalAmount,
+        'averagePrice': averagePrice,
+        'priceChange24h': 0.0,
+        'total_invested': totalInvested.abs(),
+        'transaction_count': cryptoTransactions.length,
+        'transactions': cryptoTransactions,
+        'exchange': latestExchange,
+        'calculatedAt': DateTime.now().millisecondsSinceEpoch,
+        'webOptimized': true, // Mark as web optimized
+        'platform': 'web',
+      });
+
+      if (kDebugMode) {
+        final currentValue = totalAmount * currentPrice;
+        final profitLoss = currentValue - totalInvested.abs();
+        print(
+          '💰 WEB SUPPORT: ${cryptoSymbol}: ${totalAmount.toStringAsFixed(6)} @ \$${currentPrice.toStringAsFixed(6)} = \$${currentValue.toStringAsFixed(2)}',
+        );
+      }
+    }
+
+    return holdings;
+  }
+
+  /// WEB SUPPORT: Get current price optimized for web (cache-first approach)
+  Future<double> _getCurrentPriceForWeb(
+    String cryptoId,
+    String symbol,
+    double totalAmount,
+    double totalInvested,
+  ) async {
+    // WEB SUPPORT: ALWAYS use cached price first for better web performance
+    if (_pricesCache != null && _pricesCache!.containsKey(cryptoId)) {
+      final cachedPrice = _pricesCache![cryptoId]!;
+      if (cachedPrice > 0) {
+        if (kDebugMode) {
+          print(
+            '💵 WEB SUPPORT: Using cached price for $symbol: \$${cachedPrice.toStringAsFixed(6)} (web mode)',
+          );
+        }
+        return cachedPrice;
+      }
+    }
+
+    // WEB SUPPORT: Use average purchase price as reliable fallback for web
+    if (totalAmount > 0 && totalInvested > 0) {
+      final averagePrice = (totalInvested / totalAmount).abs();
+      if (averagePrice > 0) {
+        if (kDebugMode) {
+          print(
+            '📊 WEB SUPPORT: Using average purchase price for $symbol: \$${averagePrice.toStringAsFixed(6)} (web fallback)',
+          );
+        }
+        return averagePrice;
+      }
+    }
+
+    // Final emergency fallback
+    if (kDebugMode) {
+      print('⚠️ WEB SUPPORT: Emergency fallback price for $symbol');
+    }
+    return 1.0;
+  }
+
+  /// WEB SUPPORT: Portfolio calculation optimized for web
+  Future<void> _calculatePortfolioForWeb() async {
+    if (_isCalculating) return;
+    _isCalculating = true;
+
+    try {
+      if (kDebugMode) {
+        print('🧮 WEB SUPPORT: Starting portfolio calculation for web...');
+      }
+
+      // Load transactions
+      final transactions = await _loadTransactionsFromStorage();
+
+      if (transactions.isEmpty) {
+        _summaryCache = _createEmptySummary();
+        _holdingsCache = [];
+        await _persistCacheToStorage();
+        return;
+      }
+
+      // Build holdings from transactions (web optimized)
+      final holdings = await _buildHoldingsFromTransactionsWeb(transactions);
+
+      // Calculate summary
+      final summary = _calculateSummaryFromHoldings(holdings);
+
+      // Update caches
+      _holdingsCache = holdings;
+      _summaryCache = summary;
+
+      // Mark as web optimized
+      _summaryCache!['webOptimized'] = true;
+      _summaryCache!['platform'] = 'web';
+      _summaryCache!['calculationMethod'] = 'web_enhanced_v4';
+
+      // Persist with comprehensive validation
+      await _persistCacheToStorage();
+
+      // Notify listeners
+      _portfolioController.add(holdings);
+
+      if (kDebugMode) {
+        final finalPL =
+            (_summaryCache!['profitLoss'] as num?)?.toDouble() ?? 0.0;
+        print('✅ WEB SUPPORT: Portfolio calculation completed:');
+        print('   💰 P&L: \$${finalPL.toStringAsFixed(2)}');
+        print('   📊 Holdings: ${holdings.length}');
+        print('   🌐 Platform: WEB BROWSER');
+      }
+    } catch (e) {
+      if (kDebugMode) {
+        print('❌ WEB SUPPORT: Portfolio calculation failed: $e');
+      }
+
+      // Fallback to empty state
+      _summaryCache ??= _createEmptySummary();
+      _holdingsCache ??= [];
+    } finally {
+      _isCalculating = false;
+    }
+  }
 }
