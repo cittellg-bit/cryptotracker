@@ -1,0 +1,379 @@
+import 'dart:convert';
+
+import 'package:flutter/foundation.dart';
+import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
+import 'package:google_fonts/google_fonts.dart';
+import 'package:universal_html/html.dart' as html;
+
+import '../../../core/app_export.dart';
+import '../../../widgets/custom_icon_widget.dart';
+
+class ExportPortfolioWidget extends StatefulWidget {
+  final VoidCallback? onExportComplete;
+
+  const ExportPortfolioWidget({
+    super.key,
+    this.onExportComplete,
+  });
+
+  @override
+  State<ExportPortfolioWidget> createState() => _ExportPortfolioWidgetState();
+}
+
+class _ExportPortfolioWidgetState extends State<ExportPortfolioWidget> {
+  bool _isExporting = false;
+
+  final List<Map<String, dynamic>> _mockPortfolioData = [
+    {
+      'cryptocurrency': 'Bitcoin',
+      'symbol': 'BTC',
+      'quantity': 0.5,
+      'purchasePrice': 45000.00,
+      'currentPrice': 52000.00,
+      'purchaseDate': '2024-01-15',
+      'totalInvested': 22500.00,
+      'currentValue': 26000.00,
+      'profitLoss': 3500.00,
+      'profitLossPercentage': 15.56,
+    },
+    {
+      'cryptocurrency': 'Ethereum',
+      'symbol': 'ETH',
+      'quantity': 2.5,
+      'purchasePrice': 2800.00,
+      'currentPrice': 3200.00,
+      'purchaseDate': '2024-02-10',
+      'totalInvested': 7000.00,
+      'currentValue': 8000.00,
+      'profitLoss': 1000.00,
+      'profitLossPercentage': 14.29,
+    },
+    {
+      'cryptocurrency': 'Cardano',
+      'symbol': 'ADA',
+      'quantity': 1000,
+      'purchasePrice': 0.85,
+      'currentPrice': 0.92,
+      'purchaseDate': '2024-03-05',
+      'totalInvested': 850.00,
+      'currentValue': 920.00,
+      'profitLoss': 70.00,
+      'profitLossPercentage': 8.24,
+    },
+  ];
+
+  void _showExportOptions(BuildContext context) {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (context) => _ExportOptionsBottomSheet(
+        onExportSelected: (format) {
+          Navigator.pop(context);
+          _exportPortfolio(format);
+        },
+      ),
+    );
+  }
+
+  Future<void> _exportPortfolio(String format) async {
+    setState(() {
+      _isExporting = true;
+    });
+
+    try {
+      HapticFeedback.lightImpact();
+
+      await Future.delayed(const Duration(seconds: 1)); // Simulate processing
+
+      if (format == 'CSV') {
+        await _exportToCSV();
+      } else if (format == 'PDF') {
+        await _exportToPDF();
+      }
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Portfolio exported as $format successfully'),
+            backgroundColor: Theme.of(context).colorScheme.primary,
+            duration: const Duration(seconds: 3),
+          ),
+        );
+
+        widget.onExportComplete?.call();
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: const Text('Export failed. Please try again.'),
+            backgroundColor: Theme.of(context).colorScheme.error,
+            duration: const Duration(seconds: 3),
+          ),
+        );
+      }
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isExporting = false;
+        });
+      }
+    }
+  }
+
+  Future<void> _exportToCSV() async {
+    final csvHeader =
+        'Cryptocurrency,Symbol,Quantity,Purchase Price,Current Price,Purchase Date,Total Invested,Current Value,Profit/Loss,Profit/Loss %\n';
+    final csvRows = _mockPortfolioData.map((data) {
+      return '${data['cryptocurrency']},${data['symbol']},${data['quantity']},\$${data['purchasePrice']},\$${data['currentPrice']},${data['purchaseDate']},\$${data['totalInvested']},\$${data['currentValue']},\$${data['profitLoss']},${data['profitLossPercentage']}%';
+    }).join('\n');
+
+    final csvContent = csvHeader + csvRows;
+    await _downloadFile(csvContent,
+        'crypto_portfolio_${DateTime.now().millisecondsSinceEpoch}.csv');
+  }
+
+  Future<void> _exportToPDF() async {
+    // Simulate PDF generation with formatted text content
+    final pdfContent = '''
+CryptoTracker Portfolio Report
+Generated: ${DateTime.now().toString().split('.')[0]}
+
+Portfolio Summary:
+================
+
+${_mockPortfolioData.map((data) => '''
+${data['cryptocurrency']} (${data['symbol']})
+Quantity: ${data['quantity']}
+Purchase Price: \$${data['purchasePrice']}
+Current Price: \$${data['currentPrice']}
+Purchase Date: ${data['purchaseDate']}
+Total Invested: \$${data['totalInvested']}
+Current Value: \$${data['currentValue']}
+Profit/Loss: \$${data['profitLoss']} (${data['profitLossPercentage']}%)
+---
+''').join('\n')}
+
+Total Portfolio Value: \$${_mockPortfolioData.fold(0.0, (sum, data) => sum + (data['currentValue'] as double))}
+Total Invested: \$${_mockPortfolioData.fold(0.0, (sum, data) => sum + (data['totalInvested'] as double))}
+Total Profit/Loss: \$${_mockPortfolioData.fold(0.0, (sum, data) => sum + (data['profitLoss'] as double))}
+
+Report generated by CryptoTracker App
+''';
+
+    await _downloadFile(pdfContent,
+        'crypto_portfolio_${DateTime.now().millisecondsSinceEpoch}.pdf');
+  }
+
+  Future<void> _downloadFile(String content, String filename) async {
+    if (kIsWeb) {
+      final bytes = utf8.encode(content);
+      final blob = html.Blob([bytes]);
+      final url = html.Url.createObjectUrlFromBlob(blob);
+      final anchor = html.AnchorElement(href: url)
+        ..setAttribute("download", filename)
+        ..click();
+      html.Url.revokeObjectUrl(url);
+    } else {
+      // For mobile platforms, this would typically save to downloads folder
+      // For demo purposes, we'll show a success message
+      await Future.delayed(const Duration(milliseconds: 500));
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: _isExporting ? null : () => _showExportOptions(context),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+        decoration: BoxDecoration(
+          color: _isExporting
+              ? Theme.of(context).colorScheme.surface.withValues(alpha: 0.5)
+              : Theme.of(context).colorScheme.primary.withValues(alpha: 0.1),
+          borderRadius: BorderRadius.circular(8),
+          border: Border.all(
+            color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.2),
+            width: 1,
+          ),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            if (_isExporting) ...[
+              SizedBox(
+                width: 16,
+                height: 16,
+                child: CircularProgressIndicator(
+                  strokeWidth: 2,
+                  valueColor: AlwaysStoppedAnimation<Color>(
+                    Theme.of(context).colorScheme.primary,
+                  ),
+                ),
+              ),
+              const SizedBox(width: 8),
+              Text(
+                'Exporting...',
+                style: GoogleFonts.inter(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w500,
+                  color: Theme.of(context).colorScheme.primary,
+                ),
+              ),
+            ] else ...[
+              CustomIconWidget(
+                iconName: 'file_download',
+                color: Theme.of(context).colorScheme.primary,
+                size: 16,
+              ),
+              const SizedBox(width: 8),
+              Text(
+                'Export Portfolio',
+                style: GoogleFonts.inter(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w500,
+                  color: Theme.of(context).colorScheme.primary,
+                ),
+              ),
+            ],
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _ExportOptionsBottomSheet extends StatelessWidget {
+  final ValueChanged<String> onExportSelected;
+
+  const _ExportOptionsBottomSheet({
+    required this.onExportSelected,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+
+    return Container(
+      height: MediaQuery.of(context).size.height * 0.3,
+      decoration: BoxDecoration(
+        color: theme.colorScheme.surface,
+        borderRadius: const BorderRadius.vertical(top: Radius.circular(16)),
+      ),
+      child: Column(
+        children: [
+          Container(
+            width: 40,
+            height: 4,
+            margin: const EdgeInsets.symmetric(vertical: 12),
+            decoration: BoxDecoration(
+              color: theme.colorScheme.outline,
+              borderRadius: BorderRadius.circular(2),
+            ),
+          ),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16),
+            child: Row(
+              children: [
+                Text(
+                  'Export Format',
+                  style: GoogleFonts.inter(
+                    fontSize: 20,
+                    fontWeight: FontWeight.w600,
+                    color: theme.colorScheme.onSurface,
+                  ),
+                ),
+                const Spacer(),
+                IconButton(
+                  onPressed: () => Navigator.pop(context),
+                  icon: CustomIconWidget(
+                    iconName: 'close',
+                    color: theme.colorScheme.onSurface.withValues(alpha: 0.6),
+                    size: 24,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const Divider(),
+          Expanded(
+            child: Column(
+              children: [
+                ListTile(
+                  leading: Container(
+                    width: 40,
+                    height: 40,
+                    decoration: BoxDecoration(
+                      color: Colors.green.withValues(alpha: 0.1),
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: Center(
+                      child: CustomIconWidget(
+                        iconName: 'table_chart',
+                        color: Colors.green,
+                        size: 20,
+                      ),
+                    ),
+                  ),
+                  title: Text(
+                    'CSV Format',
+                    style: GoogleFonts.inter(
+                      fontSize: 16,
+                      fontWeight: FontWeight.w500,
+                      color: theme.colorScheme.onSurface,
+                    ),
+                  ),
+                  subtitle: Text(
+                    'Spreadsheet compatible format',
+                    style: GoogleFonts.inter(
+                      fontSize: 14,
+                      fontWeight: FontWeight.w400,
+                      color: theme.colorScheme.onSurface.withValues(alpha: 0.6),
+                    ),
+                  ),
+                  onTap: () => onExportSelected('CSV'),
+                ),
+                ListTile(
+                  leading: Container(
+                    width: 40,
+                    height: 40,
+                    decoration: BoxDecoration(
+                      color: Colors.red.withValues(alpha: 0.1),
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: Center(
+                      child: CustomIconWidget(
+                        iconName: 'picture_as_pdf',
+                        color: Colors.red,
+                        size: 20,
+                      ),
+                    ),
+                  ),
+                  title: Text(
+                    'PDF Format',
+                    style: GoogleFonts.inter(
+                      fontSize: 16,
+                      fontWeight: FontWeight.w500,
+                      color: theme.colorScheme.onSurface,
+                    ),
+                  ),
+                  subtitle: Text(
+                    'Formatted report document',
+                    style: GoogleFonts.inter(
+                      fontSize: 14,
+                      fontWeight: FontWeight.w400,
+                      color: theme.colorScheme.onSurface.withValues(alpha: 0.6),
+                    ),
+                  ),
+                  onTap: () => onExportSelected('PDF'),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}

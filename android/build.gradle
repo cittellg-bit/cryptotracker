@@ -1,0 +1,56 @@
+buildscript {
+    ext.kotlin_version = '1.8.22'
+    repositories {
+        google()
+        mavenCentral()
+        gradlePluginPortal()
+    }
+    dependencies {
+        classpath 'com.android.tools.build:gradle:8.1.4'
+        classpath "org.jetbrains.kotlin:kotlin-gradle-plugin:$kotlin_version"
+    }
+}
+
+allprojects {
+    repositories {
+        google()
+        mavenCentral()
+        maven { url 'https://jitpack.io' }
+    }
+    
+    // ANDROID BUILD FIX: Configure all projects with consistent settings
+    configurations.all {
+        resolutionStrategy {
+            force 'androidx.core:core-ktx:1.12.0'
+            force 'androidx.lifecycle:lifecycle-runtime-ktx:2.7.0'
+        }
+    }
+}
+
+rootProject.buildDir = '../build'
+subprojects {
+    project.buildDir = "${rootProject.buildDir}/${project.name}"
+    
+    // ANDROID BUILD FIX: Ensure all subprojects use correct Java version
+    afterEvaluate { project ->
+        if (project.hasProperty("android")) {
+            project.android {
+                compileSdkVersion 34
+                buildToolsVersion "34.0.0"
+            }
+        }
+    }
+}
+
+// ANDROID BUILD FIX: Add task to clean build thoroughly
+tasks.register("cleanBuildCache", Delete) {
+    delete rootProject.buildDir
+    delete "${rootProject.projectDir}/.gradle"
+    doLast {
+        println "Build cache cleaned successfully"
+    }
+}
+
+tasks.register("clean", Delete) {
+    delete rootProject.buildDir
+}
