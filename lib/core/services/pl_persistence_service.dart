@@ -149,7 +149,7 @@ class PLPersistenceService {
       final prefs = await SharedPreferences.getInstance();
       String? snapshotJson = prefs.getString(_plSnapshotKey);
 
-      // Add null check before using snapshotJson
+      // Add null check before jsonDecode
       if (snapshotJson == null) {
         await _logDiagnostic(
           level: 'INFO',

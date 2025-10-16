@@ -12,6 +12,9 @@
     flutter --version
     flutter doctor
     
+    # Configure project for web platform (fixes "not configured for web" error)
+    flutter create . --platforms web
+    
     # Get dependencies and build web assets
     flutter pub get
     flutter build web --release
