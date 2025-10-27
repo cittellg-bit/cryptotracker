@@ -28,6 +28,11 @@ jobs:
         # This command runs the build with the correct repository name base path
         # Assuming your repository is 'cryptotracker'
         run: flutter build web --release --dart-define-from-file=env.json --base-href /cryptotracker/ 
+      
+      - name: ⚙️ Fix Base Path in index.html
+        # Replace the default base path with your repository name.
+        # Ensure 'cryptotracker' is your correct repository name.
+        run: sed -i 's/<base href="\/"/<base href="\/cryptotracker\/"/g' build/web/index.html
 
       - name: 🚀 Deploy to GitHub Pages
         uses: peaceiris/actions-gh-pages@v3
