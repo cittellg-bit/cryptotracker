@@ -1,4 +1,4 @@
-name: Flutter Web Deploy
+name: Simple HTML Deploy Fix
 
 on:
   push:
@@ -6,32 +6,21 @@ on:
       - main
 
 jobs:
-  build_and_deploy:
+  deploy_fix:
     runs-on: ubuntu-latest
     permissions:
-      contents: write 
+      contents: write
 
     steps:
       - name: 📚 Checkout repository
         uses: actions/checkout@v4
 
-      - name: 🎯 Setup Flutter
-        uses: subosito/flutter-action@v2
-        with:
-          flutter-version: '3.x'
+      - name: ⚙️ Create Build Directory and Copy Index
+        run: |
+          mkdir -p build/web
+          cp web/index.html build/web/index.html
 
-      - name: 📦 Install Dependencies
-        run: flutter pub get
-
-      - name: 🏗️ Build Web App (Official Command)
-        # Flutter's official path fix. This command should replace the internal
-        # placeholder in the final build/web/index.html file.
-        # Combining the project's required env file with the GitHub Pages base path
-        run: flutter build web --release --dart-define-from-file=env.json --base-href /cryptotracker/
-
-      # --- DEPLOY SECTION ---
-
-      - name: 🚀 Deploy to GitHub Pages
+      - name: 🚀 Deploy Fixed HTML to GitHub Pages
         uses: peaceiris/actions-gh-pages@v3
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
