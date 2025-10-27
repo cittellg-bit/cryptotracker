@@ -8,6 +8,8 @@ on:
 jobs:
   build_and_deploy:
     runs-on: ubuntu-latest
+    environment:
+      name: github-pages
     permissions:
       contents: write # Allows the workflow to modify the repository (i.e., deploy)
       pages: write    # Allows deployment to GitHub Pages
