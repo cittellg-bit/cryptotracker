@@ -8,12 +8,9 @@ on:
 jobs:
   build_and_deploy:
     runs-on: ubuntu-latest
-    environment:
-      name: github-pages
     permissions:
-      contents: write # Allows the workflow to modify the repository (i.e., deploy)
-      pages: write    # Allows deployment to GitHub Pages
-      id-token: write # Required for deployment
+      # These permissions are required by the peaceiris/actions-gh-pages action
+      contents: write 
 
     steps:
       - name: 📚 Checkout repository
@@ -22,27 +19,20 @@ jobs:
       - name: 🎯 Setup Flutter
         uses: subosito/flutter-action@v2
         with:
-          flutter-version: '3.x' # Uses the latest 3.x version
+          flutter-version: '3.x'
 
       - name: 📦 Install Dependencies
         run: flutter pub get
 
       - name: 🏗️ Build Web App
-        # Set the base path to the repository name for GitHub Pages hosting
-        run: flutter build web --release --dart-define-from-file=env.json --base-href /cryptotracker/
-
-      - name: ⚙️ Configure Pages
-        uses: actions/configure-pages@v4
-        with:
-          # Tells the deployment step where to find the static files
-          static_site_generator: 'flutter' 
-
-      - name: ⬆️ Upload Artifact
-        uses: actions/upload-pages-artifact@v3
-        with:
-          # Points to the folder containing the built website
-          path: './build/web' 
+        # This command runs the build with the correct repository name base path
+        # Assuming your repository is 'cryptotracker'
+        run: flutter build web --release --dart-define-from-file=env.json --base-href /cryptotracker/ 
 
       - name: 🚀 Deploy to GitHub Pages
-        id: deployment
-        uses: actions/deploy-pages@v4
+        uses: peaceiris/actions-gh-pages@v3
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          # Publishes the contents of the built web app folder to the gh-pages branch
+          publish_dir: ./build/web
+          # The deploy action will automatically create the 'gh-pages' branch
