@@ -28,8 +28,8 @@ jobs:
         run: flutter pub get
 
       - name: 🏗️ Build Web App
-        # This command creates the static files in the 'build/web' folder
-        run: flutter build web --release
+        # Set the base path to the repository name for GitHub Pages hosting
+        run: flutter build web --release --dart-define-from-file=env.json --base-href /cittellg-bit/
 
       - name: ⚙️ Configure Pages
         uses: actions/configure-pages@v4
