@@ -26,7 +26,8 @@ jobs:
       - name: 🏗️ Build Web App (Official Command)
         # Flutter's official path fix. This command should replace the internal
         # placeholder in the final build/web/index.html file.
-        run: flutter build web --release --base-href /cryptotracker/
+        # Combining the project's required env file with the GitHub Pages base path
+        run: flutter build web --release --dart-define-from-file=env.json --base-href /cryptotracker/
 
       # --- DEPLOY SECTION ---
 
