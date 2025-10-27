@@ -26,7 +26,8 @@ jobs:
       - name: 🏗️ Build Web App
         # Hardcoding the base path in index.html is now the source of truth,
         # so we run the simplest possible build command.
-        run: flutter build web --release 
+        # Force the HTML renderer for maximum compatibility on static hosts
+        run: flutter build web --release --web-renderer html
 
       - name: 🚀 Deploy to GitHub Pages
         uses: peaceiris/actions-gh-pages@v3
