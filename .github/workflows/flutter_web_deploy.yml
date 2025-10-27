@@ -9,7 +9,7 @@ jobs:
   build_and_deploy:
     runs-on: ubuntu-latest
     permissions:
-      contents: write
+      contents: write 
 
     steps:
       - name: 📚 Checkout repository
@@ -23,17 +23,10 @@ jobs:
       - name: 📦 Install Dependencies
         run: flutter pub get
 
-      # --- BUILD SECTION ---
-
-      - name: 🏗️ Build Web App (Simple Command)
-        # We run the simplest command to prevent errors
-        run: flutter build web --release 
-
-      - name: ⚙️ FIX Base Path in Deployed HTML
-        # This uses 'sed' to REPLACE the unresolved placeholder with the correct path
-        # (Works on the built file, not the source file)
-        run: |
-          sed -i 's|<base href="$FLUTTER_BASE_HREF">|<base href="/cryptotracker/">|g' build/web/index.html
+      - name: 🏗️ Build Web App (Official Command)
+        # Flutter's official path fix. This command should replace the internal
+        # placeholder in the final build/web/index.html file.
+        run: flutter build web --release --base-href /cryptotracker/
 
       # --- DEPLOY SECTION ---
 
