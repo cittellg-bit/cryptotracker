@@ -31,9 +31,7 @@ jobs:
       
       - name: ⚙️ Fix Base Path in index.html
         # Replace the default base path with your repository name.
-        # Ensure 'cryptotracker' is your correct repository name.
-        run: sed -i 's/<base href="\/"/<base href="\/cryptotracker\/"/g' build/web/index.html
-
+        
       - name: 🚀 Deploy to GitHub Pages
         uses: peaceiris/actions-gh-pages@v3
         with:
