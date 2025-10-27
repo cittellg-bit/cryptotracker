@@ -1,0 +1,46 @@
+name: Flutter Web Deploy
+
+on:
+  push:
+    branches:
+      - main  # Trigger on pushes to the main branch
+
+jobs:
+  build_and_deploy:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write # Allows the workflow to modify the repository (i.e., deploy)
+      pages: write    # Allows deployment to GitHub Pages
+      id-token: write # Required for deployment
+
+    steps:
+      - name: 📚 Checkout repository
+        uses: actions/checkout@v4
+
+      - name: 🎯 Setup Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.x' # Uses the latest 3.x version
+
+      - name: 📦 Install Dependencies
+        run: flutter pub get
+
+      - name: 🏗️ Build Web App
+        # This command creates the static files in the 'build/web' folder
+        run: flutter build web --release
+
+      - name: ⚙️ Configure Pages
+        uses: actions/configure-pages@v4
+        with:
+          # Tells the deployment step where to find the static files
+          static_site_generator: 'flutter' 
+
+      - name: ⬆️ Upload Artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          # Points to the folder containing the built website
+          path: './build/web' 
+
+      - name: 🚀 Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
