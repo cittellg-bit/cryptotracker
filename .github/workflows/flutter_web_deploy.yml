@@ -33,6 +33,6 @@ jobs:
         uses: peaceiris/actions-gh-pages@v3
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
-          # Publishes the contents of the built web app folder to the gh-pages branch
           publish_dir: ./build/web
-          # The deploy action will automatically create the 'gh-pages' branch
+          # Clean option ensures no old files (like the root README.md) are left behind.
+          force_orphan: true
