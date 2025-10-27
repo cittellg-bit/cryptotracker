@@ -3,14 +3,13 @@ name: Flutter Web Deploy
 on:
   push:
     branches:
-      - main  # Trigger on pushes to the main branch
+      - main
 
 jobs:
   build_and_deploy:
     runs-on: ubuntu-latest
     permissions:
-      # These permissions are required by the peaceiris/actions-gh-pages action
-      contents: write 
+      contents: write # Required for deployment action
 
     steps:
       - name: 📚 Checkout repository
@@ -25,17 +24,13 @@ jobs:
         run: flutter pub get
 
       - name: 🏗️ Build Web App
-        # This command runs the build with the correct repository name base path
-        # Assuming your repository is 'cryptotracker'
-        run: flutter build web --release --dart-define-from-file=env.json --base-href /cryptotracker/ 
-      
-      - name: ⚙️ Fix Base Path in index.html
-        # Replace the default base path with your repository name.
-        
+        # Hardcoding the base path in index.html is now the source of truth,
+        # so we run the simplest possible build command.
+        run: flutter build web --release 
+
       - name: 🚀 Deploy to GitHub Pages
         uses: peaceiris/actions-gh-pages@v3
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
           publish_dir: ./build/web
-          # Clean option ensures no old files (like the root README.md) are left behind.
-          force_orphan: true
+          force_orphan: true # Ensures a clean deployment without old files
