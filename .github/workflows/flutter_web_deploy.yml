@@ -29,7 +29,7 @@ jobs:
 
       - name: 🏗️ Build Web App
         # Set the base path to the repository name for GitHub Pages hosting
-        run: flutter build web --release --dart-define-from-file=env.json --base-href /cittellg-bit/
+        run: flutter build web --release --dart-define-from-file=env.json --base-href /cryptotracker/
 
       - name: ⚙️ Configure Pages
         uses: actions/configure-pages@v4
