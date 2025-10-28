@@ -4,16 +4,24 @@
   
   # Build command to create web assets
   command = """
-  # Install Flutter SDK
+  # CLEANUP: Remove old flutter SDK installation to prevent git clone error
   rm -rf flutter_sdk
+
+  # Install Flutter SDK
   git clone https://github.com/flutter/flutter.git -b stable --depth 1 flutter_sdk
   export PATH="$PATH:$PWD/flutter_sdk/bin"
 
-  # Enable the web platform
+  # Verify Flutter installation (optional, but good for logs)
+  flutter --version
+
+  # Configure project for web platform
   flutter config --enable-web
 
   # Get dependencies and build web assets
   flutter pub get
+
+  # BUILD: Set the base path and build the app
+  # This command replaces the $FLUTTER_BASE_HREF placeholder with /cryptotracker/
   flutter build web --release --base-href /cryptotracker/
   """
 
