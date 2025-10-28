@@ -4,20 +4,17 @@
   
   # Build command to create web assets
   command = """
-    # Install Flutter SDK
-    git clone https://github.com/flutter/flutter.git -b stable --depth 1 flutter_sdk
-    export PATH="$PATH:$PWD/flutter_sdk/bin"
-    
-    # Verify Flutter installation
-    flutter --version
-    flutter doctor
-    
-    # Configure project for web platform (fixes "not configured for web" error)
-    flutter create . --platforms web
-    
-    # Get dependencies and build web assets
-    flutter pub get
-    flutter build web --release --base-href /cryptotracker/
+  # Install Flutter SDK
+  rm -rf flutter_sdk
+  git clone https://github.com/flutter/flutter.git -b stable --depth 1 flutter_sdk
+  export PATH="$PATH:$PWD/flutter_sdk/bin"
+
+  # Enable the web platform
+  flutter config --enable-web
+
+  # Get dependencies and build web assets
+  flutter pub get
+  flutter build web --release --base-href /cryptotracker/
   """
 
 [build.environment]
