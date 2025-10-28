@@ -3,7 +3,7 @@
   publish = "build/web"
   
   # Build command to create web assets - runs all steps in sequence
-  command = "rm -rf flutter_sdk && git clone https://github.com/flutter/flutter.git -b stable --depth 1 flutter_sdk && export PATH=\"$PATH:$PWD/flutter_sdk/bin\" && flutter config --enable-web && flutter pub get && flutter build web --release --base-href /cryptotracker/"
+  command = "rm -rf flutter_sdk && git clone https://github.com/flutter/flutter.git -b stable --depth 1 flutter_sdk && export PATH=\\$PATH:\\$PWD/flutter_sdk/bin && flutter config --enable-web && flutter pub get && flutter build web --release --base-href /cryptotracker/"
 
 [build.environment]
   # Set Flutter specific environment variables
