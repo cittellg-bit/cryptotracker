@@ -2,28 +2,8 @@
   # The directory to publish (contains the built web assets)
   publish = "build/web"
   
-  # Build command to create web assets
-  command = """
-  # CLEANUP: Remove old flutter SDK installation to prevent git clone error
-  rm -rf flutter_sdk
-
-  # Install Flutter SDK
-  git clone https://github.com/flutter/flutter.git -b stable --depth 1 flutter_sdk
-  export PATH="$PATH:$PWD/flutter_sdk/bin"
-
-  # Verify Flutter installation (optional, but good for logs)
-  flutter --version
-
-  # Configure project for web platform
-  flutter config --enable-web
-
-  # Get dependencies and build web assets
-  flutter pub get
-
-  # BUILD: Set the base path and build the app
-  # This command replaces the $FLUTTER_BASE_HREF placeholder with /cryptotracker/
-  flutter build web --release --base-href /cryptotracker/
-  """
+  # Build command to create web assets - runs all steps in sequence
+  command = "rm -rf flutter_sdk && git clone https://github.com/flutter/flutter.git -b stable --depth 1 flutter_sdk && export PATH=\"$PATH:$PWD/flutter_sdk/bin\" && flutter config --enable-web && flutter pub get && flutter build web --release --base-href /cryptotracker/"
 
 [build.environment]
   # Set Flutter specific environment variables
